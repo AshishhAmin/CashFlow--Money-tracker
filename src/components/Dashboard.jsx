@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Wallet, Bell, Menu, Plus, Upload, BarChart3, Scan, Crown } from 'lucide-react';
+import { Wallet, Bell, Plus, Upload, BarChart3, Scan, Crown } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import BalanceCard from './BalanceCard';
 import ActivityList from './ActivityList';
@@ -58,7 +58,7 @@ export default function Dashboard({ onNavigate, transactions, onAddTransaction, 
     const totalExpenseValue = totals.expense;
 
     return (
-        <div className="pt-6 px-6 pb-24 md:pb-10 max-w-7xl mx-auto animate-in fade-in duration-300">
+        <div className="pt-6 px-4 sm:px-6 pb-24 md:pb-10 max-w-7xl mx-auto animate-in fade-in duration-300 overflow-x-hidden">
             <AddTransactionModal
                 isOpen={!!activeModalType}
                 type={activeModalType || 'expense'}
@@ -81,13 +81,14 @@ export default function Dashboard({ onNavigate, transactions, onAddTransaction, 
                     </div>
                     <div>
                         <h1 className="text-xl md:text-3xl font-bold flex items-center gap-2">
-                            Dashboard
+                            <span className="md:hidden">CashFlow</span>
+                            <span className="hidden md:block">Dashboard</span>
                             {user?.isPremium && <Crown size={20} className="text-amber-400 fill-current" />}
                         </h1>
                         <p className="text-gray-500 text-xs md:text-sm tracking-wider">Welcome back, {user?.name.split(' ')[0]}</p>
                     </div>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 md:gap-4">
                     <div className="relative">
                         <button
                             onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
@@ -104,9 +105,6 @@ export default function Dashboard({ onNavigate, transactions, onAddTransaction, 
                             currency={currency}
                         />
                     </div>
-                    <button className="md:hidden p-2">
-                        <Menu size={24} className="text-gray-400" />
-                    </button>
                     <div
                         onClick={() => onNavigate('profile')}
                         className={`w-10 h-10 p-[1px] rounded-full overflow-hidden cursor-pointer hover:scale-105 transition-transform ${user?.isPremium ? 'bg-gradient-to-br from-amber-300 via-amber-500 to-amber-700 shadow-[0_0_15px_rgba(245,158,11,0.5)]' : 'bg-gradient-to-br from-neon-green via-brand-blue to-brand-purple'}`}

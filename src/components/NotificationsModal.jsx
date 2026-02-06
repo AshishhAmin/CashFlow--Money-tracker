@@ -153,7 +153,7 @@ export default function NotificationsModal({ isOpen, onClose, transactions = [],
             ></div>
 
             {/* Dropdown attached to icon */}
-            <div className="absolute right-0 top-full mt-2 z-[100] w-80 md:w-96 bg-card-dark border border-gray-800 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="fixed md:absolute right-4 left-4 md:left-auto md:right-0 top-16 md:top-full mt-2 z-[100] md:w-96 bg-card-dark border border-gray-800 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                 <div className="flex justify-between items-center p-4 border-b border-gray-800 bg-[#1a1a1a]">
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center text-white relative">

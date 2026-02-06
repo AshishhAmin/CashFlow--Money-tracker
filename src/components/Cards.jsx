@@ -25,7 +25,7 @@ export default function Cards({ currency, cards, onAddCard, onUpdateCard, onDele
     };
 
     return (
-        <div className="pt-6 px-6 pb-24 md:pb-10 max-w-7xl mx-auto animate-in fade-in duration-300">
+        <div className="pt-6 px-4 sm:px-6 pb-24 md:pb-10 max-w-7xl mx-auto animate-in fade-in duration-300 overflow-x-hidden">
             <AddCardModal
                 isOpen={isAddModalOpen}
                 onClose={() => setIsAddModalOpen(false)}
