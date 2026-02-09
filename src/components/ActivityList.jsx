@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Music, Zap, Utensils, Briefcase, Calendar, X } from 'lucide-react';
+import { Music, Zap, Utensils, Briefcase, Calendar, X, Pencil, Trash2, ShoppingBag, Car, Home, TrendingUp, Gift, HelpCircle } from 'lucide-react';
 import { getRelativeTime } from '../utils/dateUtils';
 import CalendarFilter from './CalendarFilter';
 
-const categories = ['All', 'Food', 'Entertainment', 'Transport', 'Shopping', 'Bills', 'Essentials'];
+const categories = ['All', 'Food', 'Entertainment', 'Transport', 'Shopping', 'Bills', 'Essentials', 'Health', 'Work', 'Freelance', 'Gift', 'Investments', 'Other'];
 
-export default function ActivityList({ transactions }) {
+export default function ActivityList({ transactions, onDelete, onEdit }) {
     const [activeCategory, setActiveCategory] = useState('All');
     const [dateFilter, setDateFilter] = useState('');
     const [showCalendar, setShowCalendar] = useState(false);
@@ -105,7 +105,7 @@ export default function ActivityList({ transactions }) {
             <div className="space-y-4">
                 {displayedTransactions.length > 0 ? (
                     displayedTransactions.map((tx) => (
-                        <div key={tx.id} className="flex items-center justify-between bg-card-dark p-4 rounded-3xl border border-gray-800/50 hover:border-gray-700 transition-colors">
+                        <div key={tx.id} className="group relative flex items-center justify-between bg-card-dark p-4 rounded-3xl border border-gray-800/50 hover:border-gray-700 transition-colors">
                             <div className="flex items-center gap-4">
                                 <div className={`p-3 rounded-2xl ${tx.bg} ${tx.color}`}>
                                     <tx.icon size={20} />
@@ -120,6 +120,25 @@ export default function ActivityList({ transactions }) {
                                     {tx.amount}
                                 </p>
                                 <p className="text-gray-500 text-xs">{getRelativeTime(tx.date)}</p>
+                            </div>
+
+                            {/* Actions overlay (visible on hover) */}
+                            <div className="absolute right-4 top-1/2 -translate-y-1/2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity bg-card-dark pl-2">
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); onEdit(tx); }}
+                                    className="p-2 bg-gray-800 text-gray-400 hover:text-white rounded-xl hover:bg-gray-700 transition-colors"
+                                >
+                                    <Pencil size={16} />
+                                </button>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (confirm('Delete this transaction?')) onDelete(tx.id, tx);
+                                    }}
+                                    className="p-2 bg-gray-800 text-neon-red/80 hover:text-neon-red rounded-xl hover:bg-neon-red/10 transition-colors"
+                                >
+                                    <Trash2 size={16} />
+                                </button>
                             </div>
                         </div>
                     ))

@@ -20,26 +20,26 @@ export default function BalanceCard({ totalBalance, income, expenses, currency }
                 </span>
             </div>
 
-            <div className="flex gap-4">
+            <div className="flex gap-3 md:gap-4">
                 {/* Income */}
-                <div className="flex-1 bg-[#1a1a1a]/50 p-3 rounded-2xl flex items-center gap-3">
-                    <div className="bg-neon-green/10 p-2 rounded-full">
-                        <ArrowUp size={18} className="text-neon-green" />
+                <div className="flex-1 min-w-0 bg-[#1a1a1a]/50 p-2 md:p-3 rounded-2xl flex items-center gap-2 md:gap-3">
+                    <div className="bg-neon-green/10 p-2 rounded-full flex-shrink-0">
+                        <ArrowUp size={16} className="text-neon-green md:w-[18px] md:h-[18px]" />
                     </div>
-                    <div>
-                        <p className="text-gray-400 text-xs">Income</p>
-                        <p className="text-neon-green font-bold text-lg">+{currency.symbol}{income.toLocaleString()}</p>
+                    <div className="min-w-0 flex-1">
+                        <p className="text-gray-400 text-[10px] md:text-xs truncate">Income</p>
+                        <p className="text-neon-green font-bold text-sm md:text-lg truncate leading-tight">+{currency.symbol}{income.toLocaleString()}</p>
                     </div>
                 </div>
 
                 {/* Expense */}
-                <div className="flex-1 bg-[#1a1a1a]/50 p-3 rounded-2xl flex items-center gap-3">
-                    <div className="bg-neon-red/10 p-2 rounded-full">
-                        <ArrowDown size={18} className="text-neon-red" />
+                <div className="flex-1 min-w-0 bg-[#1a1a1a]/50 p-2 md:p-3 rounded-2xl flex items-center gap-2 md:gap-3">
+                    <div className="bg-neon-red/10 p-2 rounded-full flex-shrink-0">
+                        <ArrowDown size={16} className="text-neon-red md:w-[18px] md:h-[18px]" />
                     </div>
-                    <div>
-                        <p className="text-gray-400 text-xs">Expenses</p>
-                        <p className="text-neon-red font-bold text-lg">-{currency.symbol}{expenses.toLocaleString()}</p>
+                    <div className="min-w-0 flex-1">
+                        <p className="text-gray-400 text-[10px] md:text-xs truncate">Expenses</p>
+                        <p className="text-neon-red font-bold text-sm md:text-lg truncate leading-tight">-{currency.symbol}{expenses.toLocaleString()}</p>
                     </div>
                 </div>
             </div>

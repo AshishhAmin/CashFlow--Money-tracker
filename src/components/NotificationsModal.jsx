@@ -16,132 +16,16 @@ const getRelativeTime = (date) => {
     return new Date(date).toLocaleDateString();
 };
 
-export default function NotificationsModal({ isOpen, onClose, transactions = [], cards = [], currency = { symbol: '₹' } }) {
-    const [dismissedIds, setDismissedIds] = useState([]);
-    const [readIds, setReadIds] = useState([]);
-
-    // Generate real-time notifications based on data
-    const allNotifications = useMemo(() => {
-        const notifs = [];
-        let id = 1;
-
-        // Calculate budget (from unfrozen cards)
-        const unfrozenCards = cards.filter(c => !c.frozen);
-        const totalLimit = unfrozenCards.reduce((sum, card) => sum + (parseFloat(card.limit) || 0), 0);
-        const budgetLimit = totalLimit > 0 ? totalLimit : 50000;
-
-        // Calculate total expenses
-        const totalExpenses = transactions.reduce((sum, tx) => {
-            const val = parseFloat(tx.amount.replace(/[^\d.-]/g, ''));
-            return val < 0 ? sum + Math.abs(val) : sum;
-        }, 0);
-
-        // Budget alerts
-        const budgetPercent = (totalExpenses / budgetLimit) * 100;
-
-        if (budgetPercent >= 100) {
-            notifs.push({
-                id: id++,
-                type: 'alert',
-                title: 'Budget Exceeded!',
-                message: `You've exceeded your monthly budget of ${currency.symbol}${budgetLimit.toLocaleString()}.`,
-                time: 'Just now',
-                icon: AlertTriangle,
-                color: 'text-neon-red',
-                bg: 'bg-neon-red/10',
-                priority: 1
-            });
-        } else if (budgetPercent >= 90) {
-            notifs.push({
-                id: id++,
-                type: 'alert',
-                title: 'Budget Warning',
-                message: `You've used 90% of your monthly budget. ${currency.symbol}${(budgetLimit - totalExpenses).toLocaleString()} remaining.`,
-                time: 'Now',
-                icon: AlertTriangle,
-                color: 'text-amber-500',
-                bg: 'bg-amber-500/10',
-                priority: 2
-            });
-        } else if (budgetPercent >= 75) {
-            notifs.push({
-                id: id++,
-                type: 'info',
-                title: 'Budget Update',
-                message: `You've reached 75% of your monthly budget.`,
-                time: 'Today',
-                icon: Info,
-                color: 'text-brand-blue',
-                bg: 'bg-brand-blue/10',
-                priority: 3
-            });
-        }
-
-        // Transaction notifications (last 5 transactions)
-        const recentTxs = transactions.slice(0, 5);
-        recentTxs.forEach(tx => {
-            const val = parseFloat(tx.amount.replace(/[^\d.-]/g, ''));
-            const isExpense = val < 0;
-
-            notifs.push({
-                id: id++,
-                type: isExpense ? 'expense' : 'income',
-                title: isExpense ? 'Expense Recorded' : 'Income Received',
-                message: `${tx.title}: ${tx.amount}`,
-                time: getRelativeTime(tx.date),
-                icon: isExpense ? TrendingDown : TrendingUp,
-                color: isExpense ? 'text-neon-red' : 'text-neon-green',
-                bg: isExpense ? 'bg-neon-red/10' : 'bg-neon-green/10',
-                priority: 5
-            });
-        });
-
-        // Card alerts (frozen cards)
-        cards.filter(c => c.frozen).forEach(card => {
-            notifs.push({
-                id: id++,
-                type: 'alert',
-                title: 'Card Frozen',
-                message: `${card.alias || 'Card'} is currently frozen for security.`,
-                time: 'Active',
-                icon: CreditCard,
-                color: 'text-brand-blue',
-                bg: 'bg-brand-blue/10',
-                priority: 4
-            });
-        });
-
-        // Welcome notification if no transactions
-        if (transactions.length === 0) {
-            notifs.push({
-                id: id++,
-                type: 'info',
-                title: 'Welcome to CashFlow!',
-                message: 'Start tracking by adding your first transaction.',
-                time: 'Now',
-                icon: Wallet,
-                color: 'text-neon-green',
-                bg: 'bg-neon-green/10',
-                priority: 10
-            });
-        }
-
-        // Sort by priority (lower = more important)
-        return notifs.sort((a, b) => a.priority - b.priority);
-    }, [transactions, cards, currency]);
-
-    // Filter out dismissed notifications
-    const notifications = allNotifications.filter(n => !dismissedIds.includes(n.id));
-    const unreadCount = notifications.filter(n => !readIds.includes(n.id)).length;
-
-    const handleMarkAllRead = () => {
-        setReadIds(notifications.map(n => n.id));
-    };
-
-    const handleClearAll = () => {
-        setDismissedIds(allNotifications.map(n => n.id));
-    };
-
+export default function NotificationsModal({
+    isOpen,
+    onClose,
+    notifications = [],
+    unreadCount = 0,
+    readIds = [],
+    onMarkRead,
+    onMarkAllRead,
+    onClearAll
+}) {
     if (!isOpen) return null;
 
     return (
@@ -182,7 +66,7 @@ export default function NotificationsModal({ isOpen, onClose, transactions = [],
                             <div
                                 key={notif.id}
                                 className={`flex gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors cursor-pointer group ${readIds.includes(notif.id) ? 'opacity-60' : ''}`}
-                                onClick={() => setReadIds(prev => [...prev, notif.id])}
+                                onClick={() => onMarkRead(notif.id)}
                             >
                                 <div className={`p-2 rounded-full h-fit flex-shrink-0 ${notif.bg} ${notif.color}`}>
                                     <notif.icon size={16} />
@@ -191,7 +75,7 @@ export default function NotificationsModal({ isOpen, onClose, transactions = [],
                                     <div className="flex items-center gap-2">
                                         <h3 className="text-sm font-medium text-white group-hover:text-neon-green transition-colors">{notif.title}</h3>
                                         {!readIds.includes(notif.id) && (
-                                            <span className="w-2 h-2 bg-neon-green rounded-full flex-shrink-0"></span>
+                                            <span className="w-2 h-2 bg-neon-green rounded-full flex-shrink-0 animate-pulse"></span>
                                         )}
                                     </div>
                                     <p className="text-xs text-gray-400 mt-0.5 leading-relaxed truncate">{notif.message}</p>
@@ -206,14 +90,14 @@ export default function NotificationsModal({ isOpen, onClose, transactions = [],
                 {notifications.length > 0 && (
                     <div className="flex border-t border-gray-800 bg-[#0a0a0a]">
                         <button
-                            onClick={handleMarkAllRead}
+                            onClick={onMarkAllRead}
                             className="flex-1 flex items-center justify-center gap-2 py-3 text-xs text-gray-400 hover:text-neon-green hover:bg-white/5 transition-colors border-r border-gray-800"
                         >
                             <CheckCheck size={14} />
                             Mark all read
                         </button>
                         <button
-                            onClick={handleClearAll}
+                            onClick={onClearAll}
                             className="flex-1 flex items-center justify-center gap-2 py-3 text-xs text-gray-400 hover:text-neon-red hover:bg-white/5 transition-colors"
                         >
                             <Trash2 size={14} />

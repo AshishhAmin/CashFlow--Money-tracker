@@ -8,12 +8,28 @@ import ScanReceiptModal from './ScanReceiptModal';
 import NotificationsModal from './NotificationsModal';
 
 import { CATEGORY_COLORS } from '../utils/constants';
+import { useNotifications } from '../hooks/useNotifications';
 
-export default function Dashboard({ onNavigate, transactions, onAddTransaction, currency, user, cards, onUpdateProfile, onOpenPremium }) {
+export default function Dashboard({ onNavigate, transactions, onAddTransaction, onDeleteTransaction, onEditTransaction, currency, user, cards, onUpdateProfile, onOpenPremium }) {
     const [activeModalType, setActiveModalType] = useState(null); // 'income' | 'expense' | null
+    const [editingTransaction, setEditingTransaction] = useState(null);
     const [isScanModalOpen, setIsScanModalOpen] = useState(false);
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
+    const {
+        notifications,
+        unreadCount,
+        markAsRead,
+        markAllRead,
+        clearAll,
+        readIds
+    } = useNotifications(user, transactions, cards, currency);
+
+    const handleEditClick = (transaction) => {
+        setEditingTransaction(transaction);
+        const type = transaction.amount.startsWith('+') ? 'income' : 'expense';
+        setActiveModalType(type);
+    };
 
     const handleScanClick = () => {
         if (user?.isPremium) {
@@ -62,8 +78,15 @@ export default function Dashboard({ onNavigate, transactions, onAddTransaction, 
             <AddTransactionModal
                 isOpen={!!activeModalType}
                 type={activeModalType || 'expense'}
-                onClose={() => setActiveModalType(null)}
-                onAdd={onAddTransaction}
+                onClose={() => {
+                    setActiveModalType(null);
+                    setEditingTransaction(null);
+                }}
+                onAdd={editingTransaction
+                    ? (data) => onEditTransaction(editingTransaction.id, data)
+                    : onAddTransaction
+                }
+                initialData={editingTransaction}
                 currency={currency}
                 cards={cards}
             />
@@ -96,14 +119,19 @@ export default function Dashboard({ onNavigate, transactions, onAddTransaction, 
                             className={`relative p-2 rounded-full transition-colors ${isNotificationsOpen ? 'bg-white/10 text-white' : 'hover:bg-white/5 text-gray-400'}`}
                         >
                             <Bell size={20} />
-                            <span className="absolute top-2 right-2 w-2 h-2 bg-neon-red rounded-full border-2 border-app-black"></span>
+                            {unreadCount > 0 && (
+                                <span className="absolute top-2 right-2 w-2 h-2 bg-neon-red rounded-full border-2 border-app-black animate-pulse"></span>
+                            )}
                         </button>
                         <NotificationsModal
                             isOpen={isNotificationsOpen}
                             onClose={() => setIsNotificationsOpen(false)}
-                            transactions={transactions}
-                            cards={cards}
-                            currency={currency}
+                            notifications={notifications}
+                            unreadCount={unreadCount}
+                            readIds={readIds}
+                            onMarkRead={markAsRead}
+                            onMarkAllRead={markAllRead}
+                            onClearAll={clearAll}
                         />
                     </div>
                     <div
@@ -170,7 +198,11 @@ export default function Dashboard({ onNavigate, transactions, onAddTransaction, 
 
                     {/* Recent Activity (Desktop: in main column) */}
                     <div className="hidden lg:block">
-                        <ActivityList transactions={transactions} />
+                        <ActivityList
+                            transactions={transactions}
+                            onDelete={onDeleteTransaction}
+                            onEdit={handleEditClick}
+                        />
                     </div>
                 </div>
 
@@ -326,7 +358,11 @@ export default function Dashboard({ onNavigate, transactions, onAddTransaction, 
 
             {/* Mobile-only Activity List position */}
             <div className="lg:hidden">
-                <ActivityList transactions={transactions} />
+                <ActivityList
+                    transactions={transactions}
+                    onDelete={onDeleteTransaction}
+                    onEdit={handleEditClick}
+                />
             </div>
 
         </div>

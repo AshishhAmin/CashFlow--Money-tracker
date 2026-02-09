@@ -2,10 +2,10 @@ import { X, Calendar } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import CalendarFilter from './CalendarFilter';
 
-const expenseCategories = ['Food', 'Entertainment', 'Transport', 'Shopping', 'Bills', 'Essentials'];
+const expenseCategories = ['Food', 'Entertainment', 'Transport', 'Shopping', 'Bills', 'Essentials', 'Health'];
 const incomeCategories = ['Work', 'Freelance', 'Gift', 'Investments', 'Other'];
 
-export default function AddTransactionModal({ isOpen, onClose, onAdd, type = 'expense', currency, cards = [] }) {
+export default function AddTransactionModal({ isOpen, onClose, onAdd, type = 'expense', currency, cards = [], initialData }) {
     const [title, setTitle] = useState('');
     const [amount, setAmount] = useState('');
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]); // Default to today
@@ -16,17 +16,39 @@ export default function AddTransactionModal({ isOpen, onClose, onAdd, type = 'ex
     // Reset details when type or open status changes
     useEffect(() => {
         if (isOpen) {
-            setCategory(type === 'expense' ? 'Food' : 'Work');
-            setTitle('');
-            setAmount('');
-            setDate(new Date().toISOString().split('T')[0]);
-            if (cards.length === 1) {
-                setSelectedCardId(cards[0].id);
+            if (initialData) {
+                // Edit Mode
+                setTitle(initialData.title);
+                const absAmount = parseFloat(initialData.amount.replace(/[^\d.-]/g, ''));
+                setAmount(Math.abs(absAmount).toString());
+                setCategory(initialData.category);
+
+                // Parse date correctly
+                try {
+                    const d = new Date(initialData.date);
+                    if (!isNaN(d.getTime())) {
+                        setDate(d.toISOString().split('T')[0]);
+                    }
+                } catch (e) {
+                    console.error("Invalid date", e);
+                }
+
+                // We don't have cardId stored on transaction currently, so we can't pre-select perfectly
+                // But if we did, we would set it here.
             } else {
-                setSelectedCardId('');
+                // Add Mode
+                setCategory(type === 'expense' ? 'Food' : 'Work');
+                setTitle('');
+                setAmount('');
+                setDate(new Date().toISOString().split('T')[0]);
+                if (cards.length === 1) {
+                    setSelectedCardId(cards[0].id);
+                } else {
+                    setSelectedCardId('');
+                }
             }
         }
-    }, [isOpen, type, cards]);
+    }, [isOpen, type, cards, initialData]);
 
     if (!isOpen) return null;
 
@@ -61,7 +83,9 @@ export default function AddTransactionModal({ isOpen, onClose, onAdd, type = 'ex
             {/* Modal Content */}
             <div className={`relative bg-card-dark w-full max-w-sm rounded-3xl p-6 border border-gray-800 shadow-2xl animate-in fade-in zoom-in-95 duration-200`}>
                 <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-xl font-bold text-white">Add {isExpense ? 'Expense' : 'Income'}</h2>
+                    <h2 className="text-xl font-bold text-white">
+                        {initialData ? 'Edit' : 'Add'} {isExpense ? 'Expense' : 'Income'}
+                    </h2>
                     <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors text-gray-400 hover:text-white">
                         <X size={20} />
                     </button>
@@ -162,7 +186,7 @@ export default function AddTransactionModal({ isOpen, onClose, onAdd, type = 'ex
                         type="submit"
                         className={`w-full bg-${themeColor} text-black font-bold py-4 rounded-xl mt-4 hover:brightness-110 active:scale-[0.98] transition-all shadow-lg shadow-${themeColor}/20`}
                     >
-                        Add {isExpense ? 'Expense' : 'Income'}
+                        {initialData ? 'Update' : 'Add'} {isExpense ? 'Expense' : 'Income'}
                     </button>
                 </form>
             </div>

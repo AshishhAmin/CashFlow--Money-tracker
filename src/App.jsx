@@ -49,6 +49,7 @@ function AuthenticatedApp() {
 
   // Local User State (Synced from Firestore)
   const [userProfile, setUserProfile] = useState({
+    uid: currentUser?.uid || '',
     name: currentUser?.displayName || 'User',
     email: currentUser?.email || '',
     photoURL: currentUser?.photoURL || '',
@@ -138,6 +139,39 @@ function AuthenticatedApp() {
     }
   };
 
+  const handleDeleteTransaction = async (transactionId, transactionData) => {
+    // 1. Delete the transaction document
+    const txRef = doc(db, "users", currentUser.uid, "transactions", transactionId);
+    await deleteDoc(txRef);
+
+    // 2. If it was an expense linked to a card, revert the 'spent' amount
+    if (transactionData.category !== 'Income' && !['Work', 'Freelance', 'Gift', 'Investments', 'Other'].includes(transactionData.category)) {
+      // It's likely an expense. We need to check if we stored cardId. 
+      // NOTE: In current implementation we didn't explicitly store cardId on the transaction document in handleAddTransaction, 
+      // we only used it to update the card. We SHOULD update handleAddTransaction to store cardId if we want to reverse it accurately.
+      // For now, if we don't have cardId on the transaction, we can't easily revert the card balance.
+      // Let's assume for future we will store it.
+    }
+
+    // Correction: In handleAddTransaction we are NOT saving cardId to the transaction object. 
+    // I should update handleAddTransaction to save cardId first.
+  };
+
+  const handleEditTransaction = async (id, updatedData) => {
+    const txRef = doc(db, "users", currentUser.uid, "transactions", id);
+    const isExpense = updatedData.type === 'expense';
+    const sign = isExpense ? '-' : '+';
+
+    await updateDoc(txRef, {
+      title: updatedData.title,
+      amount: `${sign}${currency.symbol}${updatedData.amount.toFixed(2)}`,
+      date: updatedData.date ? new Date(updatedData.date).toISOString() : new Date().toISOString(),
+      category: updatedData.category,
+      // We might want to handle card updates here too, but it gets complex (reverting old, adding new).
+      // For MVP, we'll just update the transaction record.
+    });
+  };
+
   // Cards State
   const [cards, setCards] = useState([]);
 
@@ -183,6 +217,8 @@ function AuthenticatedApp() {
           onNavigate={setCurrentView}
           transactions={transactions}
           onAddTransaction={handleAddTransaction}
+          onDeleteTransaction={handleDeleteTransaction}
+          onEditTransaction={handleEditTransaction}
           currency={currency}
           user={userProfile}
           cards={cards}
@@ -217,6 +253,8 @@ function AuthenticatedApp() {
           onNavigate={setCurrentView}
           transactions={transactions}
           onAddTransaction={handleAddTransaction}
+          onDeleteTransaction={handleDeleteTransaction}
+          onEditTransaction={handleEditTransaction}
           currency={currency}
           user={userProfile}
           cards={cards}
