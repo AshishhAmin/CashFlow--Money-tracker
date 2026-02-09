@@ -1,13 +1,17 @@
-import { X } from 'lucide-react';
+import { X, Calendar } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import CalendarFilter from './CalendarFilter';
 
 const expenseCategories = ['Food', 'Entertainment', 'Transport', 'Shopping', 'Bills', 'Essentials'];
 const incomeCategories = ['Work', 'Freelance', 'Gift', 'Investments', 'Other'];
 
-export default function AddTransactionModal({ isOpen, onClose, onAdd, type = 'expense', currency }) {
+export default function AddTransactionModal({ isOpen, onClose, onAdd, type = 'expense', currency, cards = [] }) {
     const [title, setTitle] = useState('');
     const [amount, setAmount] = useState('');
+    const [date, setDate] = useState(new Date().toISOString().split('T')[0]); // Default to today
+    const [showCalendar, setShowCalendar] = useState(false);
     const [category, setCategory] = useState(type === 'expense' ? 'Food' : 'Work');
+    const [selectedCardId, setSelectedCardId] = useState('');
 
     // Reset details when type or open status changes
     useEffect(() => {
@@ -15,8 +19,14 @@ export default function AddTransactionModal({ isOpen, onClose, onAdd, type = 'ex
             setCategory(type === 'expense' ? 'Food' : 'Work');
             setTitle('');
             setAmount('');
+            setDate(new Date().toISOString().split('T')[0]);
+            if (cards.length === 1) {
+                setSelectedCardId(cards[0].id);
+            } else {
+                setSelectedCardId('');
+            }
         }
-    }, [isOpen, type]);
+    }, [isOpen, type, cards]);
 
     if (!isOpen) return null;
 
@@ -32,7 +42,9 @@ export default function AddTransactionModal({ isOpen, onClose, onAdd, type = 'ex
             title,
             amount: parseFloat(amount),
             category,
-            type
+            type,
+            date,
+            cardId: selectedCardId
         });
 
         onClose();
@@ -82,6 +94,50 @@ export default function AddTransactionModal({ isOpen, onClose, onAdd, type = 'ex
                             />
                         </div>
                     </div>
+
+                    <div className="relative">
+                        <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wider">Date</label>
+                        <button
+                            type="button"
+                            onClick={() => setShowCalendar(!showCalendar)}
+                            className={`w-full bg-[#0a0a0a] border border-gray-800 rounded-xl px-4 py-3 text-white flex items-center justify-between focus:outline-none focus:border-${themeColor} focus:ring-1 focus:ring-${themeColor} transition-all`}
+                        >
+                            <span>{new Date(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                            <Calendar size={18} className="text-gray-400" />
+                        </button>
+
+                        {showCalendar && (
+                            <div className="absolute bottom-full left-0 w-full mb-2 z-50">
+                                <CalendarFilter
+                                    transactions={[]} // No transactions needed for picker context
+                                    selectedDate={date}
+                                    onSelectDate={(newDate) => {
+                                        setDate(newDate);
+                                        setShowCalendar(false);
+                                    }}
+                                    onClose={() => setShowCalendar(false)}
+                                />
+                            </div>
+                        )}
+                    </div>
+
+                    {isExpense && cards.length > 0 && (
+                        <div>
+                            <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wider">Select Card</label>
+                            <select
+                                value={selectedCardId}
+                                onChange={(e) => setSelectedCardId(e.target.value)}
+                                className={`w-full bg-[#0a0a0a] border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-${themeColor} focus:ring-1 focus:ring-${themeColor} transition-all appearance-none cursor-pointer`}
+                            >
+                                <option value="">No Card (Cash)</option>
+                                {cards.map(card => (
+                                    <option key={card.id} value={card.id}>
+                                        {card.bank || 'Card'} •••• {card.number ? card.number.slice(-4) : 'XXXX'}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
 
                     <div>
                         <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wider">Category</label>

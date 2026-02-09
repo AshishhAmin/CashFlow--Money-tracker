@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Music, Zap, Utensils, Briefcase } from 'lucide-react';
+import { Music, Zap, Utensils, Briefcase, Calendar, X } from 'lucide-react';
 import { getRelativeTime } from '../utils/dateUtils';
+import CalendarFilter from './CalendarFilter';
 
 const categories = ['All', 'Food', 'Entertainment', 'Transport', 'Shopping', 'Bills', 'Essentials'];
 
 export default function ActivityList({ transactions }) {
     const [activeCategory, setActiveCategory] = useState('All');
+    const [dateFilter, setDateFilter] = useState('');
+    const [showCalendar, setShowCalendar] = useState(false);
     const [showAll, setShowAll] = useState(false);
     const [, setTick] = useState(0); // Forcing re-render
 
@@ -17,14 +20,19 @@ export default function ActivityList({ transactions }) {
         return () => clearInterval(timer);
     }, []);
 
-    const filteredTransactions = activeCategory === 'All'
-        ? transactions
-        : transactions.filter(tx => {
-            // Mapping categories to match transaction category strings partially or exactly
-            if (activeCategory === 'Food' && tx.category.includes('Food')) return true;
-            if (activeCategory === 'Work' && tx.category === 'Work') return true; // Handling case not in list but in data
-            return tx.category === activeCategory;
-        });
+    const filteredTransactions = transactions.filter(tx => {
+        // Date Filter
+        if (dateFilter) {
+            const txDate = new Date(tx.date).toISOString().split('T')[0];
+            if (txDate !== dateFilter) return false;
+        }
+
+        // Category Filter
+        if (activeCategory === 'All') return true;
+        if (activeCategory === 'Food' && tx.category.includes('Food')) return true;
+        if (activeCategory === 'Work' && tx.category === 'Work') return true;
+        return tx.category === activeCategory;
+    });
 
     const displayedTransactions = showAll ? filteredTransactions : filteredTransactions.slice(0, 5);
 
@@ -32,12 +40,49 @@ export default function ActivityList({ transactions }) {
         <div className="mt-8 pb-24 md:pb-0">
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-lg font-bold text-white">Recent Activity</h2>
-                <button
-                    onClick={() => setShowAll(!showAll)}
-                    className="text-neon-green text-sm font-medium hover:text-neon-green/80 transition-colors"
-                >
-                    {showAll ? 'Show Less' : 'See All'}
-                </button>
+                <div className="flex items-center gap-2 relative">
+                    <button
+                        onClick={() => setShowCalendar(!showCalendar)}
+                        className={`p-2 rounded-xl transition-colors ${dateFilter || showCalendar ? 'bg-neon-green text-black' : 'bg-[#1a1a1a] text-gray-400 hover:text-white'
+                            }`}
+                    >
+                        <Calendar size={18} />
+                    </button>
+
+                    {showCalendar && (
+                        <div className="absolute top-10 right-0 z-50">
+                            <CalendarFilter
+                                transactions={transactions}
+                                selectedDate={dateFilter}
+                                onSelectDate={(date) => {
+                                    setDateFilter(date);
+                                    if (date) setShowCalendar(false);
+                                }}
+                                onClose={() => setShowCalendar(false)}
+                            />
+                        </div>
+                    )}
+
+                    {dateFilter && (
+                        <div className="hidden md:flex items-center gap-2 bg-[#1a1a1a] px-3 py-1.5 rounded-xl border border-gray-800">
+                            <span className="text-xs text-white font-medium">
+                                {new Date(dateFilter).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            </span>
+                            <button
+                                onClick={() => setDateFilter('')}
+                                className="text-xs text-gray-400 hover:text-white"
+                            >
+                                <X size={14} />
+                            </button>
+                        </div>
+                    )}
+                    <button
+                        onClick={() => setShowAll(!showAll)}
+                        className="text-neon-green text-sm font-medium hover:text-neon-green/80 transition-colors ml-2"
+                    >
+                        {showAll ? 'Show Less' : 'See All'}
+                    </button>
+                </div>
             </div>
 
             {/* Filter Chips */}

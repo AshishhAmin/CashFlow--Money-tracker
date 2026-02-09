@@ -65,6 +65,7 @@ export default function Dashboard({ onNavigate, transactions, onAddTransaction, 
                 onClose={() => setActiveModalType(null)}
                 onAdd={onAddTransaction}
                 currency={currency}
+                cards={cards}
             />
             <ScanReceiptModal
                 isOpen={isScanModalOpen}
@@ -219,7 +220,7 @@ export default function Dashboard({ onNavigate, transactions, onAddTransaction, 
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <span className="text-white font-bold">{currency.symbol}{d.value}</span>
-                                            <span className="text-gray-600 font-medium text-xs">({Math.round(d.value / 25000 * 100)}%)</span>
+                                            <span className="text-gray-600 font-medium text-xs">({totalExpenseValue > 0 ? Math.round((d.value / totalExpenseValue) * 100) : 0}%)</span>
                                         </div>
                                     </div>
                                 ))}

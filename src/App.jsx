@@ -118,12 +118,24 @@ function AuthenticatedApp() {
       title: data.title,
       category: data.category,
       amount: `${sign}${currency.symbol}${data.amount.toFixed(2)}`,
-      time: 'Just now',
-      date: new Date().toISOString(),
+      time: 'Just now', // Could calculate time if detailed time picker used, simplified for now
+      date: data.date ? new Date(data.date).toISOString() : new Date().toISOString(),
     };
 
     // Add to Firestore
     await addDoc(collection(db, "users", currentUser.uid, "transactions"), newTransaction);
+
+    // If expense is linked to a card, update card 'spent' amount
+    if (isExpense && data.cardId) {
+      const cardRef = doc(db, "users", currentUser.uid, "cards", data.cardId);
+      const cardDoc = await getDoc(cardRef);
+      if (cardDoc.exists()) {
+        const currentSpent = cardDoc.data().spent || 0;
+        await updateDoc(cardRef, {
+          spent: currentSpent + data.amount
+        });
+      }
+    }
   };
 
   // Cards State
