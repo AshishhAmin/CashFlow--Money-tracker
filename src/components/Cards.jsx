@@ -40,7 +40,7 @@ export default function Cards({ currency, cards, transactions, onAddCard, onUpda
     };
 
     return (
-        <div className="pt-8 px-6 pb-32 md:pb-12 max-w-7xl mx-auto min-h-screen">
+        <div className="pt-8 px-4 md:px-6 pb-32 md:pb-12 max-w-7xl mx-auto min-h-screen">
             <AddCardModal
                 isOpen={isAddModalOpen}
                 onClose={() => setIsAddModalOpen(false)}
@@ -57,7 +57,7 @@ export default function Cards({ currency, cards, transactions, onAddCard, onUpda
             />
 
             {/* Header */}
-            <header className="flex justify-between items-end mb-12">
+            <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 md:gap-0 mb-12">
                 <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
                     <h1 className="text-3xl font-black tracking-tight text-white uppercase flex items-center gap-3">
                         <CreditCard className="text-neon-green" size={32} />
@@ -70,7 +70,7 @@ export default function Cards({ currency, cards, transactions, onAddCard, onUpda
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => setIsAddModalOpen(true)}
-                    className="flex items-center gap-2 bg-white text-black px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:bg-gray-200 transition-all"
+                    className="flex items-center justify-center w-full md:w-auto gap-2 bg-white text-black px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:bg-gray-200 transition-all"
                 >
                     <Plus size={16} />
                     Add New Card
@@ -85,7 +85,7 @@ export default function Cards({ currency, cards, transactions, onAddCard, onUpda
                         <div className="lg:col-span-4 space-y-6">
                             <motion.div
                                 whileHover={{ rotateY: 5, rotateX: -5, scale: 1.02 }}
-                                className={`relative h-64 rounded-[2rem] p-8 flex flex-col justify-between overflow-hidden shadow-[0_30px_60px_rgba(0,0,0,0.5)] transition-all duration-500 perspective-1000 ${card.frozen ? 'grayscale opacity-60' : ''}`}
+                                className={`relative h-48 md:h-64 rounded-[1.5rem] md:rounded-[2rem] p-6 md:p-8 flex flex-col justify-between overflow-hidden shadow-[0_30px_60px_rgba(0,0,0,0.5)] transition-all duration-500 perspective-1000 ${card.frozen ? 'grayscale opacity-60' : ''}`}
                             >
                                 {/* Base Gradient */}
                                 <div className={`absolute inset-0 ${card.theme?.bg || 'bg-gradient-to-br from-gray-800 to-black'} z-0`}></div>

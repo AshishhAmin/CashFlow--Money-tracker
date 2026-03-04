@@ -178,7 +178,7 @@ export default function AddTransactionModal({ isOpen, onClose, onAdd, type = 'ex
                                 <label className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">
                                     <Tag size={12} /> Category
                                 </label>
-                                <div className="grid grid-cols-4 gap-2">
+                                <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
                                     {categories.map((cat) => (
                                         <button
                                             key={cat}

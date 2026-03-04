@@ -29,8 +29,8 @@ export default function BalanceCard({ totalBalance, income, expenses, currency }
             </div>
 
             <div className="flex items-baseline gap-2 mb-8">
-                <span className="text-4xl font-extrabold text-white">{currency.symbol}</span>
-                <h1 className="text-6xl font-black tracking-tighter text-white truncate">
+                <span className="text-2xl md:text-4xl font-extrabold text-white">{currency.symbol}</span>
+                <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-white truncate">
                     {totalBalance.toLocaleString()}
                 </h1>
             </div>

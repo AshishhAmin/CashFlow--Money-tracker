@@ -103,7 +103,7 @@ export default function Dashboard({ onNavigate, transactions, onAddTransaction, 
     };
 
     return (
-        <div className="pt-8 px-6 pb-32 md:pb-12 max-w-7xl mx-auto overflow-x-hidden min-h-screen">
+        <div className="pt-8 px-4 md:px-6 pb-32 md:pb-12 max-w-7xl mx-auto overflow-x-hidden min-h-screen">
             <AddTransactionModal
                 isOpen={!!activeModalType}
                 type={activeModalType || 'expense'}
@@ -130,7 +130,7 @@ export default function Dashboard({ onNavigate, transactions, onAddTransaction, 
             <div className="absolute top-0 right-0 w-[40%] h-[300px] bg-neon-green/10 blur-[100px] -z-10 rounded-full animate-pulse" />
 
             {/* Header */}
-            <header className="flex justify-between items-center mb-10">
+            <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 md:gap-0 mb-10">
                 <motion.div
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -157,7 +157,7 @@ export default function Dashboard({ onNavigate, transactions, onAddTransaction, 
                     </div>
                 </motion.div>
 
-                <div className="flex items-center gap-4">
+                <div className="flex items-center justify-between w-full md:w-auto gap-4">
                     <motion.div className="relative">
                         <motion.button
                             whileHover={{ scale: 1.1 }}

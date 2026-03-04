@@ -64,7 +64,7 @@ export default function Profile({ currency, setCurrency, theme, setTheme, notifi
     };
 
     return (
-        <div className="pt-8 px-6 pb-32 md:pb-12 max-w-5xl mx-auto min-h-screen">
+        <div className="pt-8 px-4 md:px-6 pb-32 md:pb-12 max-w-5xl mx-auto min-h-screen">
             {/* Modals & Overlays */}
             <AnimatePresence>
                 {isLogoutConfirmOpen && (
@@ -94,7 +94,7 @@ export default function Profile({ currency, setCurrency, theme, setTheme, notifi
             <HelpSupportModal isOpen={isHelpModalOpen} onClose={() => setIsHelpModalOpen(false)} />
 
             {/* Header Area */}
-            <header className="flex justify-between items-end mb-12">
+            <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 md:gap-0 mb-12">
                 <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
                     <h1 className="text-3xl font-black tracking-tight text-white uppercase flex items-center gap-3">
                         <Fingerprint className="text-neon-green" size={32} />
@@ -103,8 +103,8 @@ export default function Profile({ currency, setCurrency, theme, setTheme, notifi
                     <p className="text-gray-400 text-[10px] font-black uppercase tracking-[0.3em] mt-1">Manage your account</p>
                 </motion.div>
 
-                <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-                    <div className={`px-4 py-2 rounded-xl border flex items-center gap-2 ${user.isPremium ? 'bg-brand-yellow/10 border-brand-yellow text-brand-yellow shadow-[0_0_20px_rgba(245,158,11,0.2)]' : 'glass border-white/5 text-gray-500'}`}>
+                <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="w-full md:w-auto">
+                    <div className={`px-4 py-2 rounded-xl border flex items-center justify-center md:justify-start gap-2 ${user.isPremium ? 'bg-brand-yellow/10 border-brand-yellow text-brand-yellow shadow-[0_0_20px_rgba(245,158,11,0.2)]' : 'glass border-white/5 text-gray-500'}`}>
                         {user.isPremium && <Crown size={14} className="fill-current" />}
                         <span className="text-[10px] font-black uppercase tracking-widest">{user.isPremium ? 'Premium Member' : 'Free Member'}</span>
                     </div>
@@ -135,10 +135,10 @@ export default function Profile({ currency, setCurrency, theme, setTheme, notifi
 
                     <div className="text-center md:text-left flex-1 z-10">
                         <div className="flex flex-col md:flex-row items-center gap-3 mb-4">
-                            <h2 className="text-4xl font-black text-white tracking-tighter uppercase">{user.name}</h2>
+                            <h2 className="text-2xl md:text-4xl font-black text-white tracking-tighter uppercase">{user.name}</h2>
                             {user.isPremium && <div className="px-2 py-0.5 bg-brand-yellow text-black text-[8px] font-black rounded uppercase">PRO</div>}
                         </div>
-                        <div className="flex flex-wrap justify-center md:justify-start gap-6">
+                        <div className="flex flex-col md:flex-row flex-wrap justify-center md:justify-start gap-3 md:gap-6">
                             <div className="flex items-center gap-2">
                                 <Mail size={14} className="text-gray-600" />
                                 <span className="text-gray-400 text-xs font-bold">{user.email}</span>
@@ -151,7 +151,7 @@ export default function Profile({ currency, setCurrency, theme, setTheme, notifi
                         <p className="mt-6 text-gray-400 text-[10px] font-black uppercase tracking-[0.2em] max-w-md leading-relaxed">{user.bio || 'Loading bio...'}</p>
                     </div>
 
-                    <button onClick={() => setIsEditModalOpen(true)} className="px-8 py-3 bg-white text-black rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:bg-gray-200 transition-all z-10">
+                    <button onClick={() => setIsEditModalOpen(true)} className="w-full md:w-auto px-8 py-3 bg-white text-black rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:bg-gray-200 transition-all z-10">
                         Edit Profile
                     </button>
                 </motion.div>
@@ -244,7 +244,7 @@ export default function Profile({ currency, setCurrency, theme, setTheme, notifi
                             <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Irreversible removal of all your data</p>
                         </div>
                     </div>
-                    <button onClick={() => setIsDeleteConfirmOpen(true)} className="px-8 py-3 glass border-white/5 text-[10px] font-black uppercase tracking-widest text-neon-red hover:bg-neon-red hover:text-white transition-all z-10">
+                    <button onClick={() => setIsDeleteConfirmOpen(true)} className="w-full md:w-auto px-8 py-3 glass border-white/5 text-[10px] font-black uppercase tracking-widest text-neon-red hover:bg-neon-red hover:text-white transition-all z-10">
                         Delete Forever
                     </button>
                 </motion.div>

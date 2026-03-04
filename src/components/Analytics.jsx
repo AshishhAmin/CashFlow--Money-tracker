@@ -255,39 +255,39 @@ export default function Analytics({ transactions, currency, cards }) {
     };
 
     return (
-        <div className="pt-8 px-6 pb-32 md:pb-12 max-w-7xl mx-auto min-h-screen">
-            <header className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-6">
+        <div className="pt-8 px-4 md:px-6 pb-32 md:pb-12 max-w-7xl mx-auto min-h-screen">
+            {/* Header */}
+            <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 md:gap-0 mb-12">
                 <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
                     <h1 className="text-3xl font-black tracking-tight text-white uppercase flex items-center gap-3">
                         <BarChart3 className="text-neon-green" size={32} />
                         Analytics
                     </h1>
-                    <p className="text-gray-400 text-[10px] font-black uppercase tracking-[0.3em] mt-1">Financial Intelligence</p>
+                    <p className="text-gray-400 text-[10px] font-black uppercase tracking-[0.3em] mt-1">Deep Financial Insights</p>
                 </motion.div>
 
-                <div className="flex gap-4">
-                    <div className="flex glass rounded-2xl p-1 border-white/5">
-                        <button
-                            onClick={() => setView('charts')}
-                            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${view === 'charts' ? 'bg-white text-black shadow-xl' : 'text-gray-500 hover:text-white'}`}
-                        >
-                            Charts
-                        </button>
-                        <button
-                            onClick={() => setView('reports')}
-                            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${view === 'reports' ? 'bg-white text-black shadow-xl' : 'text-gray-500 hover:text-white'}`}
-                        >
-                            Reports
-                        </button>
+                <div className="w-full md:w-auto flex items-center justify-between md:justify-end gap-4">
+                    {/* View Toggle */}
+                    <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
+                        {['charts', 'reports'].map((v) => (
+                            <button
+                                key={v}
+                                onClick={() => setView(v)}
+                                className={`px-4 py-2 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${view === v ? 'bg-white text-black shadow-xl' : 'text-gray-500 hover:text-white'}`}
+                            >
+                                {v}
+                            </button>
+                        ))}
                     </div>
 
+                    {/* Time Range Selector */}
                     {view === 'charts' && (
-                        <div className="flex gap-2">
+                        <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
                             {['Week', 'Month', 'Overall'].map((range) => (
                                 <button
                                     key={range}
                                     onClick={() => setTimeRange(range)}
-                                    className={`px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${timeRange === range ? 'bg-neon-green text-black shadow-neon' : 'glass text-gray-400 border-white/5 hover:text-white'}`}
+                                    className={`px-3 py-2 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${timeRange === range ? 'bg-neon-green text-black shadow-neon' : 'text-gray-500 hover:text-white'}`}
                                 >
                                     {range}
                                 </button>
@@ -305,7 +305,7 @@ export default function Analytics({ transactions, currency, cards }) {
                         initial="hidden"
                         animate="show"
                         exit={{ opacity: 0, y: -20 }}
-                        className="grid grid-cols-1 lg:grid-cols-12 gap-6"
+                        className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8"
                     >
                         {/* Hero Stats */}
                         <motion.div variants={item} className="lg:col-span-4 glass-card p-8 relative overflow-hidden group">
