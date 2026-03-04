@@ -1,56 +1,41 @@
-import { X, Calendar } from 'lucide-react';
+import { X, Calendar as CalendarIcon, Hash, Tag, CreditCard as CardIcon, Edit3, Zap, ArrowDown, ArrowUp } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import CalendarFilter from './CalendarFilter';
 
-const expenseCategories = ['Food', 'Entertainment', 'Transport', 'Shopping', 'Bills', 'Essentials', 'Health'];
-const incomeCategories = ['Work', 'Freelance', 'Gift', 'Investments', 'Other'];
+const expenseCategories = ['Food', 'Shopping', 'Transport', 'Bills', 'Rent', 'Utilities', 'Subscriptions', 'Essentials', 'People', 'Transfers', 'Other'];
+const incomeCategories = ['Work', 'Freelance', 'Gift', 'People', 'Transfers', 'Other'];
 
 export default function AddTransactionModal({ isOpen, onClose, onAdd, type = 'expense', currency, cards = [], initialData }) {
     const [title, setTitle] = useState('');
     const [amount, setAmount] = useState('');
-    const [date, setDate] = useState(new Date().toISOString().split('T')[0]); // Default to today
+    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [showCalendar, setShowCalendar] = useState(false);
     const [category, setCategory] = useState(type === 'expense' ? 'Food' : 'Work');
     const [selectedCardId, setSelectedCardId] = useState('');
 
-    // Reset details when type or open status changes
     useEffect(() => {
         if (isOpen) {
             if (initialData) {
-                // Edit Mode
                 setTitle(initialData.title);
                 const absAmount = parseFloat(initialData.amount.replace(/[^\d.-]/g, ''));
                 setAmount(Math.abs(absAmount).toString());
                 setCategory(initialData.category);
-
-                // Parse date correctly
                 try {
                     const d = new Date(initialData.date);
-                    if (!isNaN(d.getTime())) {
-                        setDate(d.toISOString().split('T')[0]);
-                    }
+                    if (!isNaN(d.getTime())) setDate(d.toISOString().split('T')[0]);
                 } catch (e) {
                     console.error("Invalid date", e);
                 }
-
-                // We don't have cardId stored on transaction currently, so we can't pre-select perfectly
-                // But if we did, we would set it here.
             } else {
-                // Add Mode
                 setCategory(type === 'expense' ? 'Food' : 'Work');
                 setTitle('');
                 setAmount('');
                 setDate(new Date().toISOString().split('T')[0]);
-                if (cards.length === 1) {
-                    setSelectedCardId(cards[0].id);
-                } else {
-                    setSelectedCardId('');
-                }
+                setSelectedCardId(cards.length === 1 ? cards[0].id : '');
             }
         }
     }, [isOpen, type, cards, initialData]);
-
-    if (!isOpen) return null;
 
     const isExpense = type === 'expense';
     const themeColor = isExpense ? 'neon-red' : 'neon-green';
@@ -59,7 +44,6 @@ export default function AddTransactionModal({ isOpen, onClose, onAdd, type = 'ex
     const handleSubmit = (e) => {
         e.preventDefault();
         if (!title || !amount) return;
-
         onAdd({
             title,
             amount: parseFloat(amount),
@@ -68,128 +52,165 @@ export default function AddTransactionModal({ isOpen, onClose, onAdd, type = 'ex
             date,
             cardId: selectedCardId
         });
-
         onClose();
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            {/* Backdrop */}
-            <div
-                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-                onClick={onClose}
-            ></div>
+        <AnimatePresence>
+            {isOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto">
+                    {/* Backdrop */}
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/80 backdrop-blur-md"
+                        onClick={onClose}
+                    />
 
-            {/* Modal Content */}
-            <div className={`relative bg-card-dark w-full max-w-sm rounded-3xl p-6 border border-gray-800 shadow-2xl animate-in fade-in zoom-in-95 duration-200`}>
-                <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-xl font-bold text-white">
-                        {initialData ? 'Edit' : 'Add'} {isExpense ? 'Expense' : 'Income'}
-                    </h2>
-                    <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors text-gray-400 hover:text-white">
-                        <X size={20} />
-                    </button>
-                </div>
-
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                        <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wider">Title</label>
-                        <input
-                            type="text"
-                            placeholder={isExpense ? "e.g. Starbucks" : "e.g. September Salary"}
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            className={`w-full bg-[#0a0a0a] border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-${themeColor} focus:ring-1 focus:ring-${themeColor} transition-all`}
-                            autoFocus
-                        />
-                    </div>
-
-                    <div>
-                        <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wider">Amount</label>
-                        <div className="relative">
-                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">{currency?.symbol || '₹'}</span>
-                            <input
-                                type="number"
-                                placeholder="0.00"
-                                step="0.01"
-                                value={amount}
-                                onChange={(e) => setAmount(e.target.value)}
-                                className={`w-full bg-[#0a0a0a] border border-gray-800 rounded-xl pl-8 pr-4 py-3 text-white focus:outline-none focus:border-${themeColor} focus:ring-1 focus:ring-${themeColor} transition-all`}
-                            />
+                    {/* Modal Content */}
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                        className="relative glass-card w-full max-w-md p-8 border-white/10 shadow-[0_50px_100px_rgba(0,0,0,0.5)] z-20"
+                    >
+                        <div className="flex justify-between items-start mb-8">
+                            <div>
+                                <h2 className="text-2xl font-black text-white uppercase tracking-tight flex items-center gap-3">
+                                    <div className={`p-2 rounded-xl ${isExpense ? 'bg-neon-red/10 text-neon-red' : 'bg-neon-green/10 text-neon-green'}`}>
+                                        {isExpense ? <ArrowDown size={20} /> : <ArrowUp size={20} />}
+                                    </div>
+                                    {initialData ? 'Update' : 'Add'} {isExpense ? 'Expense' : 'Income'}
+                                </h2>
+                                <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest mt-1">Enter transaction details</p>
+                            </div>
+                            <button onClick={onClose} className="p-2 glass border-white/5 hover:bg-white/10 rounded-xl transition-all text-gray-400 hover:text-white">
+                                <X size={20} />
+                            </button>
                         </div>
-                    </div>
 
-                    <div className="relative">
-                        <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wider">Date</label>
-                        <button
-                            type="button"
-                            onClick={() => setShowCalendar(!showCalendar)}
-                            className={`w-full bg-[#0a0a0a] border border-gray-800 rounded-xl px-4 py-3 text-white flex items-center justify-between focus:outline-none focus:border-${themeColor} focus:ring-1 focus:ring-${themeColor} transition-all`}
-                        >
-                            <span>{new Date(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                            <Calendar size={18} className="text-gray-400" />
-                        </button>
-
-                        {showCalendar && (
-                            <div className="absolute bottom-full left-0 w-full mb-2 z-50">
-                                <CalendarFilter
-                                    transactions={[]} // No transactions needed for picker context
-                                    selectedDate={date}
-                                    onSelectDate={(newDate) => {
-                                        setDate(newDate);
-                                        setShowCalendar(false);
-                                    }}
-                                    onClose={() => setShowCalendar(false)}
+                        <form onSubmit={handleSubmit} className="space-y-6">
+                            {/* Title Input */}
+                            <div className="space-y-2">
+                                <label className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">
+                                    <Edit3 size={12} /> Description
+                                </label>
+                                <input
+                                    type="text"
+                                    placeholder={isExpense ? "What did you spend on?" : "Source of income"}
+                                    value={title}
+                                    onChange={(e) => setTitle(e.target.value)}
+                                    className="w-full glass bg-white/5 border-white/5 rounded-2xl px-5 py-4 text-white font-black tracking-tight focus:outline-none focus:bg-white/10 focus:border-white/20 transition-all placeholder:text-gray-700"
+                                    autoFocus
                                 />
                             </div>
-                        )}
-                    </div>
 
-                    {isExpense && cards.length > 0 && (
-                        <div>
-                            <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wider">Select Card</label>
-                            <select
-                                value={selectedCardId}
-                                onChange={(e) => setSelectedCardId(e.target.value)}
-                                className={`w-full bg-[#0a0a0a] border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-${themeColor} focus:ring-1 focus:ring-${themeColor} transition-all appearance-none cursor-pointer`}
+                            {/* Amount Input */}
+                            <div className="space-y-2">
+                                <label className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">
+                                    <Hash size={12} /> Amount
+                                </label>
+                                <div className="relative">
+                                    <span className="absolute left-5 top-1/2 -translate-y-1/2 text-white font-black opacity-30 text-xl">{currency?.symbol || '₹'}</span>
+                                    <input
+                                        type="number"
+                                        placeholder="0.00"
+                                        step="0.01"
+                                        value={amount}
+                                        onChange={(e) => setAmount(e.target.value)}
+                                        className="w-full glass bg-white/5 border-white/5 rounded-2xl pl-12 pr-5 py-4 text-3xl font-black tracking-tighter text-white focus:outline-none focus:bg-white/10 focus:border-white/20 transition-all placeholder:text-gray-800"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Date & Category Grid */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2 relative">
+                                    <label className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">
+                                        <CalendarIcon size={12} /> Date
+                                    </label>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowCalendar(!showCalendar)}
+                                        className="w-full glass bg-white/5 border-white/5 rounded-2xl px-5 py-4 text-white text-xs font-black uppercase tracking-widest flex items-center justify-between hover:bg-white/10 transition-all"
+                                    >
+                                        <span>{new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                                        <Zap size={14} className="text-neon-green" />
+                                    </button>
+
+                                    {showCalendar && (
+                                        <div className="absolute bottom-full left-0 w-64 mb-4 z-50">
+                                            <CalendarFilter
+                                                transactions={[]}
+                                                selectedDate={date}
+                                                onSelectDate={(newDate) => {
+                                                    setDate(newDate);
+                                                    setShowCalendar(false);
+                                                }}
+                                                onClose={() => setShowCalendar(false)}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">
+                                        <CardIcon size={12} /> Paid With
+                                    </label>
+                                    <select
+                                        value={selectedCardId}
+                                        onChange={(e) => setSelectedCardId(e.target.value)}
+                                        className="w-full glass bg-white/5 border-white/5 rounded-2xl px-5 py-4 text-white text-[10px] font-black uppercase tracking-widest focus:outline-none hover:bg-white/10 transition-all appearance-none cursor-pointer"
+                                    >
+                                        <option value="" className="bg-black">Liquid Cash</option>
+                                        {cards.map(card => (
+                                            <option key={card.id} value={card.id} className="bg-black">
+                                                {card.bank || 'Card'} • {card.number?.slice(-4)}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            {/* Categories Chips */}
+                            <div className="space-y-4">
+                                <label className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">
+                                    <Tag size={12} /> Category
+                                </label>
+                                <div className="grid grid-cols-4 gap-2">
+                                    {categories.map((cat) => (
+                                        <button
+                                            key={cat}
+                                            type="button"
+                                            onClick={() => setCategory(cat)}
+                                            className={`py-2.5 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all ${category === cat
+                                                ? 'bg-white text-black shadow-xl scale-105'
+                                                : 'glass bg-white/5 text-gray-400 border-white/5 hover:text-white hover:bg-white/10'
+                                                }`}
+                                        >
+                                            {cat}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Submit Button */}
+                            <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                type="submit"
+                                className={`w-full py-5 rounded-[2rem] font-black uppercase tracking-[0.2em] text-[10px] mt-8 transition-all shadow-2xl ${isExpense
+                                    ? 'bg-neon-red text-white shadow-neon-red/20'
+                                    : 'bg-neon-green text-black shadow-neon-green/20'
+                                    }`}
                             >
-                                <option value="">No Card (Cash)</option>
-                                {cards.map(card => (
-                                    <option key={card.id} value={card.id}>
-                                        {card.bank || 'Card'} •••• {card.number ? card.number.slice(-4) : 'XXXX'}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                    )}
-
-                    <div>
-                        <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wider">Category</label>
-                        <div className="grid grid-cols-3 gap-2">
-                            {categories.map((cat) => (
-                                <button
-                                    key={cat}
-                                    type="button"
-                                    onClick={() => setCategory(cat)}
-                                    className={`px-2 py-2 rounded-lg text-xs font-medium transition-all ${category === cat
-                                        ? `bg-${themeColor} text-black shadow-[0_0_10px_rgba(${isExpense ? '231,76,60' : '46,204,113'},0.4)]`
-                                        : 'bg-[#1a1a1a] text-gray-400 hover:bg-[#252525]'
-                                        }`}
-                                >
-                                    {cat}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    <button
-                        type="submit"
-                        className={`w-full bg-${themeColor} text-black font-bold py-4 rounded-xl mt-4 hover:brightness-110 active:scale-[0.98] transition-all shadow-lg shadow-${themeColor}/20`}
-                    >
-                        {initialData ? 'Update' : 'Add'} {isExpense ? 'Expense' : 'Income'}
-                    </button>
-                </form>
-            </div>
-        </div>
+                                {initialData ? 'Save Changes' : `Save ${isExpense ? 'Expense' : 'Income'}`}
+                            </motion.button>
+                        </form>
+                    </motion.div>
+                </div>
+            )}
+        </AnimatePresence>
     );
 }

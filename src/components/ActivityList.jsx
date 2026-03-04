@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Music, Zap, Utensils, Briefcase, Calendar, X, Pencil, Trash2, ShoppingBag, Car, Home, TrendingUp, Gift, HelpCircle } from 'lucide-react';
+import { Music, Zap, Utensils, Briefcase, Calendar, X, Pencil, Trash2, ShoppingBag, Car, Home, TrendingUp, Gift, HelpCircle, ChevronRight, Filter } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { getRelativeTime } from '../utils/dateUtils';
 import CalendarFilter from './CalendarFilter';
 
@@ -7,12 +8,11 @@ const categories = ['All', 'Food', 'Entertainment', 'Transport', 'Shopping', 'Bi
 
 export default function ActivityList({ transactions, onDelete, onEdit }) {
     const [activeCategory, setActiveCategory] = useState('All');
-    const [dateFilter, setDateFilter] = useState('');
+    const [dateFilter, setDateFilter] = useState(new Date().toISOString().split('T')[0]);
     const [showCalendar, setShowCalendar] = useState(false);
     const [showAll, setShowAll] = useState(false);
-    const [, setTick] = useState(0); // Forcing re-render
+    const [, setTick] = useState(0);
 
-    // Update time every minute
     useEffect(() => {
         const timer = setInterval(() => {
             setTick(tick => tick + 1);
@@ -21,132 +21,150 @@ export default function ActivityList({ transactions, onDelete, onEdit }) {
     }, []);
 
     const filteredTransactions = transactions.filter(tx => {
-        // Date Filter
         if (dateFilter) {
             const txDate = new Date(tx.date).toISOString().split('T')[0];
             if (txDate !== dateFilter) return false;
         }
-
-        // Category Filter
         if (activeCategory === 'All') return true;
         if (activeCategory === 'Food' && tx.category.includes('Food')) return true;
         if (activeCategory === 'Work' && tx.category === 'Work') return true;
         return tx.category === activeCategory;
     });
 
-    const displayedTransactions = showAll ? filteredTransactions : filteredTransactions.slice(0, 5);
+    const displayedTransactions = showAll ? filteredTransactions : filteredTransactions.slice(0, 6);
 
     return (
-        <div className="mt-8 pb-24 md:pb-0">
-            <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-bold text-white">Recent Activity</h2>
-                <div className="flex items-center gap-2 relative">
+        <div className="flex flex-col h-full">
+            <div className="flex justify-between items-end mb-6">
+                <div>
+                    <h2 className="text-xl font-black text-white uppercase tracking-tight">Today's Velocity</h2>
+                    <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest mt-1">Daily Stream</p>
+                </div>
+                <div className="flex items-center gap-2">
                     <button
-                        onClick={() => setShowCalendar(!showCalendar)}
-                        className={`p-2 rounded-xl transition-colors ${dateFilter || showCalendar ? 'bg-neon-green text-black' : 'bg-[#1a1a1a] text-gray-400 hover:text-white'
-                            }`}
+                        onClick={() => setDateFilter('')}
+                        className={`p-2.5 rounded-xl border transition-all ${!dateFilter ? 'opacity-0 pointer-events-none' : 'glass border-white/5 text-neon-red hover:bg-neon-red/10'}`}
+                        title="Clear Date Filter"
                     >
-                        <Calendar size={18} />
+                        <X size={18} />
                     </button>
 
-                    {showCalendar && (
-                        <div className="absolute top-10 right-0 z-50">
-                            <CalendarFilter
-                                transactions={transactions}
-                                selectedDate={dateFilter}
-                                onSelectDate={(date) => {
-                                    setDateFilter(date);
-                                    if (date) setShowCalendar(false);
-                                }}
-                                onClose={() => setShowCalendar(false)}
-                            />
-                        </div>
-                    )}
+                    <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => setShowCalendar(!showCalendar)}
+                        className={`p-2.5 rounded-xl border transition-all ${dateFilter || showCalendar ? 'bg-neon-green border-neon-green text-black shadow-neon' : 'glass border-white/5 text-gray-400 hover:text-white'}`}
+                    >
+                        <Calendar size={18} />
+                    </motion.button>
 
-                    {dateFilter && (
-                        <div className="hidden md:flex items-center gap-2 bg-[#1a1a1a] px-3 py-1.5 rounded-xl border border-gray-800">
-                            <span className="text-xs text-white font-medium">
-                                {new Date(dateFilter).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                            </span>
-                            <button
-                                onClick={() => setDateFilter('')}
-                                className="text-xs text-gray-400 hover:text-white"
-                            >
-                                <X size={14} />
-                            </button>
-                        </div>
-                    )}
                     <button
                         onClick={() => setShowAll(!showAll)}
-                        className="text-neon-green text-sm font-medium hover:text-neon-green/80 transition-colors ml-2"
+                        className="glass px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-white border-white/5 transition-all"
                     >
-                        {showAll ? 'Show Less' : 'See All'}
+                        {showAll ? 'Collapse All' : 'Expand View'}
                     </button>
                 </div>
             </div>
 
+            {showCalendar && (
+                <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mb-4 relative z-50"
+                >
+                    <CalendarFilter
+                        transactions={transactions}
+                        selectedDate={dateFilter}
+                        onSelectDate={(date) => {
+                            setDateFilter(date);
+                            if (date) setShowCalendar(false);
+                        }}
+                        onClose={() => setShowCalendar(false)}
+                    />
+                </motion.div>
+            )}
+
             {/* Filter Chips */}
-            <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
+            <div className="flex gap-2 overflow-x-auto pb-6 scrollbar-hide">
                 {categories.map((cat, idx) => (
-                    <button
+                    <motion.button
                         key={idx}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
                         onClick={() => setActiveCategory(cat)}
-                        className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all duration-200
-                ${activeCategory === cat
-                                ? 'bg-neon-green text-black hover:bg-neon-green/90'
-                                : 'bg-[#1a1a1a] text-gray-400 hover:bg-[#252525] border border-transparent hover:border-gray-800'}`}
+                        className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all
+                        ${activeCategory === cat
+                                ? 'bg-white text-black shadow-xl'
+                                : 'glass text-gray-500 border-white/5 hover:text-white'}`}
                     >
                         {cat}
-                    </button>
+                    </motion.button>
                 ))}
             </div>
 
             {/* List */}
-            <div className="space-y-4">
-                {displayedTransactions.length > 0 ? (
-                    displayedTransactions.map((tx) => (
-                        <div key={tx.id} className="group relative flex items-center justify-between bg-card-dark p-4 rounded-3xl border border-gray-800/50 hover:border-gray-700 transition-colors">
-                            <div className="flex items-center gap-4">
-                                <div className={`p-3 rounded-2xl ${tx.bg} ${tx.color}`}>
-                                    <tx.icon size={20} />
+            <div className="space-y-3 flex-1">
+                <AnimatePresence mode="popLayout">
+                    {displayedTransactions.length > 0 ? (
+                        displayedTransactions.map((tx, index) => (
+                            <motion.div
+                                key={tx.id}
+                                layout
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: index * 0.05 }}
+                                className="group relative flex items-center justify-between glass-card p-4 border-white/5 hover:bg-white/5 transition-all cursor-pointer"
+                            >
+                                <div className="flex items-center gap-4">
+                                    <div className={`p-3 rounded-2xl shadow-lg ${tx.bg} ${tx.color} group-hover:scale-110 transition-transform duration-500`}>
+                                        <tx.icon size={20} />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-white font-black text-sm tracking-tight">{tx.title}</h3>
+                                        <div className="flex items-center gap-2 mt-0.5">
+                                            <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">{tx.category}</span>
+                                            <span className="w-1 h-1 bg-gray-700 rounded-full"></span>
+                                            <span className="text-gray-600 text-[10px] font-black uppercase tracking-widest">{getRelativeTime(tx.date)}</span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h3 className="text-white font-bold text-sm">{tx.title}</h3>
-                                    <p className="text-gray-400 text-xs">{tx.category}</p>
+                                <div className="text-right mr-2 group-hover:opacity-0 transition-opacity">
+                                    <p className={`font-black text-lg tracking-tighter ${tx.amount.startsWith('+') ? 'text-neon-green' : 'text-white'}`}>
+                                        {tx.amount}
+                                    </p>
                                 </div>
-                            </div>
-                            <div className="text-right">
-                                <p className={`font-bold ${tx.amount.startsWith('+') ? 'text-neon-green' : 'text-white'}`}>
-                                    {tx.amount}
-                                </p>
-                                <p className="text-gray-500 text-xs">{getRelativeTime(tx.date)}</p>
-                            </div>
 
-                            {/* Actions overlay (visible on hover) */}
-                            <div className="absolute right-4 top-1/2 -translate-y-1/2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity bg-card-dark pl-2">
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); onEdit(tx); }}
-                                    className="p-2 bg-gray-800 text-gray-400 hover:text-white rounded-xl hover:bg-gray-700 transition-colors"
-                                >
-                                    <Pencil size={16} />
-                                </button>
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (confirm('Delete this transaction?')) onDelete(tx.id, tx);
-                                    }}
-                                    className="p-2 bg-gray-800 text-neon-red/80 hover:text-neon-red rounded-xl hover:bg-neon-red/10 transition-colors"
-                                >
-                                    <Trash2 size={16} />
-                                </button>
+                                {/* Actions overlay */}
+                                <div className="absolute right-4 top-1/2 -translate-y-1/2 flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); onEdit(tx); }}
+                                        className="p-2.5 glass text-gray-400 hover:text-white rounded-xl hover:bg-white/10 transition-all"
+                                    >
+                                        <Pencil size={16} />
+                                    </button>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (confirm('Delete this transaction?')) onDelete(tx.id, tx);
+                                        }}
+                                        className="p-2.5 glass text-neon-red/80 hover:text-neon-red rounded-xl hover:bg-neon-red/10 transition-all"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
+                            </motion.div>
+                        ))
+                    ) : (
+                        <div className="flex flex-col items-center justify-center py-12 text-center glass-card border-dashed border-white/10">
+                            <div className="p-4 rounded-full bg-white/5 text-gray-600 mb-4">
+                                <Filter size={32} />
                             </div>
+                            <p className="text-gray-500 text-[10px] font-black uppercase tracking-[0.2em]">Silence in the stream</p>
+                            <p className="text-gray-600 text-[10px] mt-1">No data matching your current filters</p>
                         </div>
-                    ))
-                ) : (
-                    <div className="text-center text-gray-500 py-4 text-sm">
-                        No transactions found for {activeCategory}
-                    </div>
-                )}
+                    )}
+                </AnimatePresence>
             </div>
         </div>
     );

@@ -1,78 +1,109 @@
-import { X, Check, Crown, Zap, Shield, ScanLine, Sparkles } from 'lucide-react';
+import { X, Check, Crown, Zap, Shield, ScanLine, Sparkles, Star } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function PremiumModal({ isOpen, onClose, onUpgrade }) {
-    if (!isOpen) return null;
-
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            {/* Backdrop */}
-            <div
-                className="absolute inset-0 bg-black/90 backdrop-blur-sm"
-                onClick={onClose}
-            ></div>
-
-            {/* Modal Content */}
-            <div className="relative bg-[#0a0a0a] w-full max-w-sm rounded-[2rem] p-1 border border-amber-500/30 shadow-[0_0_50px_rgba(245,158,11,0.2)] animate-in zoom-in-95 duration-300 overflow-hidden">
-
-                {/* Decorative gradients */}
-                <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-amber-500/20 to-transparent pointer-events-none"></div>
-
-                <div className="relative bg-[#0a0a0a] rounded-[1.8rem] p-6 text-center">
-                    {/* Header */}
-                    <button
+        <AnimatePresence>
+            {isOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto">
+                    {/* Backdrop */}
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/90 backdrop-blur-xl"
                         onClick={onClose}
-                        className="absolute top-4 right-4 p-2 rounded-full text-gray-500 hover:text-white hover:bg-white/10 transition-colors"
+                    />
+
+                    {/* Modal Content */}
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9, y: 30 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.9, y: 30 }}
+                        className="relative glass-card w-full max-w-md p-1 border-brand-yellow/30 shadow-[0_0_100px_rgba(245,158,11,0.2)] overflow-hidden z-20"
                     >
-                        <X size={20} />
-                    </button>
+                        {/* Decorative Background Effects */}
+                        <div className="absolute top-0 left-0 right-0 h-48 bg-gradient-to-b from-brand-yellow/10 to-transparent pointer-events-none" />
+                        <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-brand-yellow/5 blur-[100px] rounded-full pointer-events-none" />
 
-                    {/* Trial Badge */}
-                    <div className="inline-flex items-center gap-1.5 bg-neon-green/20 text-neon-green text-xs font-bold px-3 py-1 rounded-full mb-4">
-                        <Sparkles size={12} />
-                        FREE TRIAL
-                    </div>
+                        <div className="relative bg-black/40 backdrop-blur-3xl rounded-[1.8rem] p-8 text-center border border-white/5">
+                            {/* Header */}
+                            <button
+                                onClick={onClose}
+                                className="absolute top-6 right-6 p-2 glass border-white/5 rounded-xl text-gray-500 hover:text-white hover:bg-white/10 transition-all"
+                            >
+                                <X size={20} />
+                            </button>
 
-                    <div className="w-16 h-16 mx-auto bg-gradient-to-br from-amber-300 to-amber-600 rounded-2xl flex items-center justify-center shadow-lg mb-6 shadow-amber-500/20">
-                        <Crown size={32} className="text-black fill-current" strokeWidth={1.5} />
-                    </div>
+                            {/* Badge */}
+                            <motion.div
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.2 }}
+                                className="inline-flex items-center gap-2 bg-brand-yellow/10 text-brand-yellow text-[8px] font-black px-4 py-1.5 rounded-full mb-8 border border-brand-yellow/20 uppercase tracking-[0.2em]"
+                            >
+                                <Star size={10} className="fill-current" />
+                                Exclusive Beta Access
+                            </motion.div>
 
-                    <h2 className="text-2xl font-bold text-white mb-2">Try <span className="text-amber-400">Premium</span> Free</h2>
-                    <p className="text-gray-400 text-sm mb-8">Get early access to all premium features during our beta launch.</p>
+                            <motion.div
+                                initial={{ scale: 0.8, rotate: -10 }}
+                                animate={{ scale: 1, rotate: 0 }}
+                                transition={{ type: "spring", stiffness: 200, damping: 15 }}
+                                className="w-24 h-24 mx-auto bg-gradient-to-br from-brand-yellow to-amber-600 rounded-[2.5rem] flex items-center justify-center shadow-2xl mb-8 relative"
+                            >
+                                <Crown size={48} className="text-black fill-current" strokeWidth={1.5} />
+                                <div className="absolute inset-0 bg-white/20 blur-xl rounded-full animate-pulse" />
+                            </motion.div>
 
-                    {/* Features List */}
-                    <div className="space-y-4 text-left mb-8">
-                        <FeatureItem icon={ScanLine} text="AI Receipt Scanning" subtext="Auto-extract details from photos" />
-                        <FeatureItem icon={Zap} text="Unlimited Budgets" subtext="Create budgets for every category" />
-                        <FeatureItem icon={Shield} text="Advanced Security" subtext="Enhanced protection features" />
-                    </div>
+                            <h2 className="text-4xl font-black text-white mb-3 tracking-tighter uppercase">Premium <span className="text-brand-yellow">Plan</span></h2>
+                            <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest mb-10 max-w-[250px] mx-auto leading-relaxed">
+                                Unlock all features and get smarter insights into your spending.
+                            </p>
 
-                    {/* Action */}
-                    <div className="space-y-3">
-                        <button
-                            onClick={onUpgrade}
-                            className="w-full bg-gradient-to-r from-amber-400 to-amber-600 text-black font-bold py-4 rounded-xl hover:brightness-110 active:scale-[0.98] transition-all shadow-[0_4px_20px_rgba(245,158,11,0.3)] flex items-center justify-center gap-2 group"
-                        >
-                            <Sparkles size={18} />
-                            <span>Start Free Trial</span>
-                        </button>
-                        <p className="text-xs text-gray-500">No credit card required. Premium features included.</p>
-                    </div>
+                            {/* Features List */}
+                            <div className="space-y-4 mb-10">
+                                <FeatureItem icon={ScanLine} text="AI Receipt Scan" subtext="Instantly add expenses from photos" delay={0.3} />
+                                <FeatureItem icon={Zap} text="Unlimited Budgets" subtext="Create as many budgets as you need" delay={0.4} />
+                                <FeatureItem icon={Shield} text="Maximum Security" subtext="Your data is safe and encrypted" delay={0.5} />
+                            </div>
+
+                            {/* Action Area */}
+                            <div className="space-y-4">
+                                <motion.button
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={onUpgrade}
+                                    className="w-full bg-white text-black font-black uppercase tracking-[0.2em] text-[10px] py-5 rounded-[2rem] shadow-2xl hover:bg-gray-200 transition-all flex items-center justify-center gap-3 group"
+                                >
+                                    <Sparkles size={16} />
+                                    <span>Start Free Trial</span>
+                                </motion.button>
+                                <p className="text-[8px] text-gray-600 font-black uppercase tracking-widest">No credit card required • Secure & Private</p>
+                            </div>
+                        </div>
+                    </motion.div>
                 </div>
-            </div>
-        </div>
+            )}
+        </AnimatePresence>
     );
 }
 
-function FeatureItem({ icon: Icon, text, subtext }) {
+function FeatureItem({ icon: Icon, text, subtext, delay }) {
     return (
-        <div className="flex items-center gap-4 bg-white/5 p-3 rounded-2xl border border-white/5 hover:border-amber-500/30 transition-colors">
-            <div className="bg-amber-500/10 p-2.5 rounded-xl text-amber-400">
+        <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay }}
+            className="flex items-center gap-5 glass bg-white/5 p-4 rounded-2xl border-white/5 hover:border-brand-yellow/20 hover:bg-white/10 transition-all group"
+        >
+            <div className="bg-brand-yellow/10 p-3 rounded-xl text-brand-yellow group-hover:scale-110 transition-transform">
                 <Icon size={20} />
             </div>
-            <div>
-                <h3 className="text-white font-bold text-sm">{text}</h3>
-                <p className="text-gray-500 text-xs">{subtext}</p>
+            <div className="text-left">
+                <h3 className="text-white font-black text-xs uppercase tracking-widest">{text}</h3>
+                <p className="text-gray-500 text-[10px] font-black opacity-60 uppercase tracking-widest mt-0.5">{subtext}</p>
             </div>
-        </div>
+        </motion.div>
     );
 }

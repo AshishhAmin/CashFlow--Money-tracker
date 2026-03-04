@@ -1,48 +1,67 @@
 import { ArrowUp, ArrowDown, TrendingUp } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export default function BalanceCard({ totalBalance, income, expenses, currency }) {
     return (
-        <div className="bg-gradient-to-br from-card-dark to-[#0a0a0a] p-6 rounded-3xl border border-gray-800 shadow-xl relative overflow-hidden">
-            {/* Glow effect */}
-            <div className="absolute top-0 right-0 w-32 h-32 bg-neon-green/5 blur-[80px] rounded-full pointer-events-none"></div>
+        <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="glass-card p-8 shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative overflow-hidden group border-white/10"
+        >
+            {/* Animated Glow effects */}
+            <motion.div
+                animate={{
+                    scale: [1, 1.2, 1],
+                    opacity: [0.3, 0.5, 0.3]
+                }}
+                transition={{ duration: 10, repeat: Infinity }}
+                className="absolute -top-20 -right-20 w-64 h-64 bg-neon-green/10 blur-[100px] rounded-full pointer-events-none"
+            />
 
-            <div className="flex justify-between items-start mb-2">
-                <span className="text-gray-400 text-sm font-medium tracking-wider flex items-center gap-2">
-                    <TrendingUp size={16} className="text-brand-yellow" />
-                    TOTAL BALANCE
+            <div className="flex justify-between items-start mb-4">
+                <span className="text-gray-500 text-xs font-black tracking-[0.2em] flex items-center gap-2">
+                    <TrendingUp size={14} className="text-neon-green" />
+                    TOTAL NET WORTH
                 </span>
+                <div className="px-3 py-1 bg-neon-green/10 text-neon-green text-[10px] font-black rounded-full border border-neon-green/20">
+                    +14.2% • MONTHLY
+                </div>
             </div>
 
-            <div className="flex items-end gap-3 mb-6">
-                <h1 className="text-2xl sm:text-4xl font-bold text-white truncate">{currency.symbol}{totalBalance.toLocaleString()}</h1>
-                <span className="bg-neon-green/20 text-neon-green text-xs font-bold px-2 py-1 rounded-full mb-1 flex items-center">
-                    +12.5%
-                </span>
+            <div className="flex items-baseline gap-2 mb-8">
+                <span className="text-4xl font-extrabold text-white">{currency.symbol}</span>
+                <h1 className="text-6xl font-black tracking-tighter text-white truncate">
+                    {totalBalance.toLocaleString()}
+                </h1>
             </div>
 
-            <div className="flex gap-3 md:gap-4">
+            <div className="grid grid-cols-2 gap-4">
                 {/* Income */}
-                <div className="flex-1 min-w-0 bg-[#1a1a1a]/50 p-2 md:p-3 rounded-2xl flex items-center gap-2 md:gap-3">
-                    <div className="bg-neon-green/10 p-2 rounded-full flex-shrink-0">
-                        <ArrowUp size={16} className="text-neon-green md:w-[18px] md:h-[18px]" />
+                <div className="bg-white/5 border border-white/5 p-4 rounded-3xl flex items-center gap-4 group/item hover:bg-white/10 transition-all duration-500">
+                    <div className="bg-neon-green p-3 rounded-2xl shadow-neon transition-transform group-hover/item:scale-110">
+                        <ArrowUp size={20} className="text-black" />
                     </div>
-                    <div className="min-w-0 flex-1">
-                        <p className="text-gray-400 text-[10px] md:text-xs truncate">Income</p>
-                        <p className="text-neon-green font-bold text-sm md:text-lg truncate leading-tight">+{currency.symbol}{income.toLocaleString()}</p>
+                    <div>
+                        <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest mb-0.5">Cash In</p>
+                        <p className="text-white font-black text-xl tracking-tight">
+                            {currency.symbol}{income.toLocaleString()}
+                        </p>
                     </div>
                 </div>
 
                 {/* Expense */}
-                <div className="flex-1 min-w-0 bg-[#1a1a1a]/50 p-2 md:p-3 rounded-2xl flex items-center gap-2 md:gap-3">
-                    <div className="bg-neon-red/10 p-2 rounded-full flex-shrink-0">
-                        <ArrowDown size={16} className="text-neon-red md:w-[18px] md:h-[18px]" />
+                <div className="bg-white/5 border border-white/5 p-4 rounded-3xl flex items-center gap-4 group/item hover:bg-white/10 transition-all duration-500">
+                    <div className="bg-neon-red p-3 rounded-2xl shadow-[0_0_20px_rgba(255,77,77,0.3)] transition-transform group-hover/item:scale-110">
+                        <ArrowDown size={20} className="text-white" />
                     </div>
-                    <div className="min-w-0 flex-1">
-                        <p className="text-gray-400 text-[10px] md:text-xs truncate">Expenses</p>
-                        <p className="text-neon-red font-bold text-sm md:text-lg truncate leading-tight">-{currency.symbol}{expenses.toLocaleString()}</p>
+                    <div>
+                        <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest mb-0.5">Cash Out</p>
+                        <p className="text-white font-black text-xl tracking-tight">
+                            {currency.symbol}{expenses.toLocaleString()}
+                        </p>
                     </div>
                 </div>
             </div>
-        </div>
+        </motion.div>
     );
 }

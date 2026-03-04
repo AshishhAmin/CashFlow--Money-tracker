@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import { Wallet, Bell, Plus, Upload, BarChart3, Scan, Crown } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Wallet, Bell, Plus, Upload, BarChart3, Scan, Crown, Zap, TrendingUp, ChevronRight } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { motion, AnimatePresence } from 'framer-motion';
 import BalanceCard from './BalanceCard';
 import ActivityList from './ActivityList';
 import AddTransactionModal from './AddTransactionModal';
@@ -11,7 +12,7 @@ import { CATEGORY_COLORS } from '../utils/constants';
 import { useNotifications } from '../hooks/useNotifications';
 
 export default function Dashboard({ onNavigate, transactions, onAddTransaction, onDeleteTransaction, onEditTransaction, currency, user, cards, onUpdateProfile, onOpenPremium }) {
-    const [activeModalType, setActiveModalType] = useState(null); // 'income' | 'expense' | null
+    const [activeModalType, setActiveModalType] = useState(null);
     const [editingTransaction, setEditingTransaction] = useState(null);
     const [isScanModalOpen, setIsScanModalOpen] = useState(false);
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -39,26 +40,39 @@ export default function Dashboard({ onNavigate, transactions, onAddTransaction, 
         }
     };
 
-    // Calculate totals based on transactions
-    const totals = transactions.reduce((acc, tx) => {
-        const val = parseFloat(tx.amount.replace(/[^\d.-]/g, ''));
-        if (val > 0) acc.income += val;
-        else acc.expense += Math.abs(val);
-        return acc;
-    }, { income: 0, expense: 0 });
+    const currentMonthData = useMemo(() => {
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const totalBalance = (totals.income - totals.expense).toFixed(2);
+        return (transactions || []).reduce((acc, tx) => {
+            const txDate = new Date(tx?.date || new Date());
+            const amountStr = tx?.amount || '0';
+            const val = parseFloat(amountStr.replace(/[^\d.-]/g, ''));
 
-    // Dynamic Donut Data
+            // All-time totals (for balance)
+            if (val > 0) acc.totalIncome += val;
+            else acc.totalExpense += Math.abs(val);
+
+            // current month totals
+            if (txDate >= startOfMonth) {
+                if (val > 0) acc.monthlyIncome += val;
+                else acc.monthlyExpense += Math.abs(val);
+                acc.monthTransactions.push(tx);
+            }
+            return acc;
+        }, { totalIncome: 0, totalExpense: 0, monthlyIncome: 0, monthlyExpense: 0, monthTransactions: [] });
+    }, [transactions]);
+
+    const totalBalance = (currentMonthData.totalIncome - currentMonthData.totalExpense).toFixed(2);
+
     const getDonutData = () => {
-        const expenses = transactions.filter(t => t.amount.startsWith('-'));
+        const expenses = (currentMonthData?.monthTransactions || []).filter(t => t?.amount?.startsWith('-'));
         const catMap = {};
-        let totalExp = 0;
-
         expenses.forEach(tx => {
+            if (!tx?.amount) return;
             const val = Math.abs(parseFloat(tx.amount.replace(/[^\d.-]/g, '')));
-            catMap[tx.category] = (catMap[tx.category] || 0) + val;
-            totalExp += val;
+            const cat = tx.category || 'Other';
+            catMap[cat] = (catMap[cat] || 0) + val;
         });
 
         return Object.entries(catMap)
@@ -71,10 +85,25 @@ export default function Dashboard({ onNavigate, transactions, onAddTransaction, 
     };
 
     const donutData = getDonutData();
-    const totalExpenseValue = totals.expense;
+    const totalExpenseValue = currentMonthData.monthlyExpense;
+
+    const container = {
+        hidden: { opacity: 0 },
+        show: {
+            opacity: 1,
+            transition: {
+                staggerChildren: 0.1
+            }
+        }
+    };
+
+    const item = {
+        hidden: { opacity: 0, y: 20 },
+        show: { opacity: 1, y: 0 }
+    };
 
     return (
-        <div className="pt-6 px-4 sm:px-6 pb-24 md:pb-10 max-w-7xl mx-auto animate-in fade-in duration-300 overflow-x-hidden">
+        <div className="pt-8 px-6 pb-32 md:pb-12 max-w-7xl mx-auto overflow-x-hidden min-h-screen">
             <AddTransactionModal
                 isOpen={!!activeModalType}
                 type={activeModalType || 'expense'}
@@ -97,32 +126,50 @@ export default function Dashboard({ onNavigate, transactions, onAddTransaction, 
                 currency={currency}
             />
 
+            {/* Premium Header Decoration */}
+            <div className="absolute top-0 right-0 w-[40%] h-[300px] bg-neon-green/10 blur-[100px] -z-10 rounded-full animate-pulse" />
+
             {/* Header */}
-            <div className="flex justify-between items-center mb-8">
-                <div className="flex items-center gap-3">
-                    <div className="bg-neon-green p-2 rounded-xl text-black md:hidden">
-                        <Wallet size={24} />
+            <header className="flex justify-between items-center mb-10">
+                <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="flex items-center gap-5"
+                >
+                    <div className="relative">
+                        <motion.div
+                            whileHover={{ rotate: 360, scale: 1.1 }}
+                            transition={{ duration: 0.8, ease: "anticipate" }}
+                            className="bg-neon-green p-3 rounded-2xl shadow-neon text-black"
+                        >
+                            <Zap size={28} className="fill-current" />
+                        </motion.div>
+                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-white border-4 border-app-black rounded-full shadow-neon" />
                     </div>
                     <div>
-                        <h1 className="text-xl md:text-3xl font-bold flex items-center gap-2">
-                            <span className="md:hidden">CashFlow</span>
-                            <span className="hidden md:block">Dashboard</span>
-                            {user?.isPremium && <Crown size={20} className="text-amber-400 fill-current" />}
+                        <h1 className="text-3xl font-black tracking-tight text-white flex items-center gap-2 uppercase">
+                            Home
+                            {user?.isPremium && <Crown size={22} className="text-brand-yellow fill-brand-yellow drop-shadow-[0_0_10px_rgba(245,158,11,0.5)]" />}
                         </h1>
-                        <p className="text-gray-500 text-xs md:text-sm tracking-wider">Welcome back, {user?.name.split(' ')[0]}</p>
+                        <p className="text-gray-500 text-[10px] font-black uppercase tracking-[0.3em]">
+                            Overview • {user?.name?.split(' ')[0] || 'Member'}
+                        </p>
                     </div>
-                </div>
-                <div className="flex items-center gap-2 md:gap-4">
-                    <div className="relative">
-                        <button
+                </motion.div>
+
+                <div className="flex items-center gap-4">
+                    <motion.div className="relative">
+                        <motion.button
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
                             onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-                            className={`relative p-2 rounded-full transition-colors ${isNotificationsOpen ? 'bg-white/10 text-white' : 'hover:bg-white/5 text-gray-400'}`}
+                            className="p-3 rounded-2xl glass hover:bg-white/10 text-gray-400 hover:text-white transition-all border-white/5"
                         >
-                            <Bell size={20} />
+                            <Bell size={22} />
                             {unreadCount > 0 && (
-                                <span className="absolute top-2 right-2 w-2 h-2 bg-neon-red rounded-full border-2 border-app-black animate-pulse"></span>
+                                <span className="absolute top-3 right-3 w-2.5 h-2.5 bg-neon-red rounded-full border-2 border-app-black animate-pulse shadow-[0_0_10px_#FF4D4D]" />
                             )}
-                        </button>
+                        </motion.button>
                         <NotificationsModal
                             isOpen={isNotificationsOpen}
                             onClose={() => setIsNotificationsOpen(false)}
@@ -133,238 +180,247 @@ export default function Dashboard({ onNavigate, transactions, onAddTransaction, 
                             onMarkAllRead={markAllRead}
                             onClearAll={clearAll}
                         />
-                    </div>
-                    <div
+                    </motion.div>
+
+                    <motion.div
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
                         onClick={() => onNavigate('profile')}
-                        className={`w-10 h-10 p-[1px] rounded-full overflow-hidden cursor-pointer hover:scale-105 transition-transform ${user?.isPremium ? 'bg-gradient-to-br from-amber-300 via-amber-500 to-amber-700 shadow-[0_0_15px_rgba(245,158,11,0.5)]' : 'bg-gradient-to-br from-neon-green via-brand-blue to-brand-purple'}`}
+                        className={`w-12 h-12 p-[2px] rounded-2xl overflow-hidden cursor-pointer shadow-xl transition-all ${user?.isPremium ? 'bg-gradient-to-br from-brand-yellow to-orange-500' : 'bg-gradient-to-br from-neon-green to-emerald-500'}`}
                     >
-                        <div className="w-full h-full bg-gray-900 rounded-full flex items-center justify-center overflow-hidden">
+                        <div className="w-full h-full bg-surface-dark rounded-[14px] flex items-center justify-center overflow-hidden">
                             {user?.photoURL ? (
                                 <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" />
                             ) : (
-                                <span className="text-xs font-bold text-white">{user?.name.charAt(0)}</span>
+                                <span className="text-sm font-black text-white">{user?.name?.charAt(0) || 'U'}</span>
                             )}
                         </div>
-                    </div>
+                    </motion.div>
                 </div>
-            </div>
+            </header>
 
-            {/* Main Grid Layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-
-                {/* Column 1: Balance & Actions */}
-                <div className="space-y-6 lg:col-span-2">
+            {/* Bento Grid Layout */}
+            <motion.div
+                variants={container}
+                initial="hidden"
+                animate="show"
+                className="grid grid-cols-1 lg:grid-cols-12 gap-6"
+            >
+                {/* Balance Card - Main Span */}
+                <motion.div variants={item} className="lg:col-span-8">
                     <BalanceCard
                         totalBalance={totalBalance}
-                        income={totals.income}
-                        expenses={totals.expense}
+                        income={currentMonthData.totalIncome}
+                        expenses={currentMonthData.totalExpense}
                         currency={currency}
                     />
+                </motion.div>
 
-                    {/* Action Grid */}
-                    <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-4 gap-4">
-                        <button
-                            onClick={() => setActiveModalType('expense')}
-                            className="aspect-square rounded-3xl border border-neon-red/10 bg-[#1a0f0f] flex flex-col items-center justify-center gap-2 hover:scale-105 transition-transform group shadow-lg cursor-pointer"
-                        >
-                            <Plus size={24} className="text-neon-red md:w-8 md:h-8" />
-                            <span className="text-[9px] md:text-xs font-bold text-neon-red">Add Expense</span>
-                        </button>
-                        <button
-                            onClick={() => setActiveModalType('income')}
-                            className="aspect-square rounded-3xl border border-neon-green/10 bg-[#0f1a14] flex flex-col items-center justify-center gap-2 hover:scale-105 transition-transform group shadow-lg cursor-pointer"
-                        >
-                            <Upload size={24} className="text-neon-green md:w-8 md:h-8" />
-                            <span className="text-[9px] md:text-xs font-bold text-neon-green">Add Income</span>
-                        </button>
-                        <button
-                            onClick={handleScanClick}
-                            className="aspect-square rounded-3xl border border-brand-blue/10 bg-[#0f151a] flex flex-col items-center justify-center gap-2 hover:scale-105 transition-transform group shadow-lg cursor-pointer relative overflow-hidden"
-                        >
-                            {!user?.isPremium && (
-                                <div className="absolute top-2 right-2 bg-amber-500 text-black text-[8px] px-1.5 py-0.5 rounded font-bold z-10">PRO</div>
-                            )}
-                            <Scan size={24} className="text-brand-blue md:w-8 md:h-8" />
-                            <span className="text-[9px] md:text-xs font-bold text-brand-blue">Scan Receipt</span>
-                        </button>
-                        <button
+                {/* Quick Actions Bento */}
+                <motion.div variants={item} className="lg:col-span-4 grid grid-cols-2 gap-4">
+                    <button
+                        onClick={() => setActiveModalType('expense')}
+                        className="glass-card p-6 flex flex-col items-center justify-center gap-3 hover:bg-neon-red/10 border-white/5 transition-all duration-500 group"
+                    >
+                        <div className="p-3 rounded-2xl bg-neon-red/10 text-neon-red group-hover:scale-110 group-hover:bg-neon-red group-hover:text-black transition-all">
+                            <Plus size={24} />
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 group-hover:text-white">Expense</span>
+                    </button>
+                    <button
+                        onClick={() => setActiveModalType('income')}
+                        className="glass-card p-6 flex flex-col items-center justify-center gap-3 hover:bg-neon-green/10 border-white/5 transition-all duration-500 group"
+                    >
+                        <div className="p-3 rounded-2xl bg-neon-green/10 text-neon-green group-hover:scale-110 group-hover:bg-neon-green group-hover:text-black transition-all">
+                            <Upload size={24} />
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 group-hover:text-white">Income</span>
+                    </button>
+                    <button
+                        onClick={handleScanClick}
+                        className="glass-card p-6 flex flex-col items-center justify-center gap-3 hover:bg-brand-blue/10 border-white/5 transition-all duration-500 group relative"
+                    >
+                        {!user?.isPremium && (
+                            <span className="absolute top-2 right-2 bg-brand-yellow text-black text-[8px] px-1.5 py-0.5 rounded-lg font-black z-10">PRO</span>
+                        )}
+                        <div className="p-3 rounded-2xl bg-brand-blue/10 text-brand-blue group-hover:scale-110 group-hover:bg-brand-blue group-hover:text-white transition-all">
+                            <Scan size={24} />
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 group-hover:text-white">AI Scan</span>
+                    </button>
+                    <button
+                        onClick={() => onNavigate('stats')}
+                        className="glass-card p-6 flex flex-col items-center justify-center gap-3 hover:bg-brand-purple/10 border-white/5 transition-all duration-500 group"
+                    >
+                        <div className="p-3 rounded-2xl bg-brand-purple/10 text-brand-purple group-hover:scale-110 group-hover:bg-brand-purple group-hover:text-white transition-all">
+                            <BarChart3 size={24} />
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 group-hover:text-white">Stats</span>
+                    </button>
+                </motion.div>
+
+                {/* Expense Breakdown Bento */}
+                <motion.div variants={item} className="lg:col-span-5 glass-card p-8">
+                    <div className="flex justify-between items-center mb-8">
+                        <div>
+                            <h3 className="text-xl font-black tracking-tight text-white uppercase">Expenses</h3>
+                            <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest text-brand-yellow">This Month</p>
+                        </div>
+                        <motion.button
+                            whileHover={{ x: 5 }}
                             onClick={() => onNavigate('stats')}
-                            className="aspect-square rounded-3xl border border-brand-purple/10 bg-[#150f1a] flex flex-col items-center justify-center gap-2 hover:scale-105 transition-transform group shadow-lg cursor-pointer"
+                            className="w-10 h-10 rounded-xl glass flex items-center justify-center text-gray-400 hover:text-white transition-all"
                         >
-                            <BarChart3 size={24} className="text-brand-purple md:w-8 md:h-8" />
-                            <span className="text-[9px] md:text-xs font-bold text-brand-purple">Analytics</span>
-                        </button>
+                            <ChevronRight size={20} />
+                        </motion.button>
                     </div>
 
-                    {/* Recent Activity (Desktop: in main column) */}
-                    <div className="hidden lg:block">
-                        <ActivityList
-                            transactions={transactions}
-                            onDelete={onDeleteTransaction}
-                            onEdit={handleEditClick}
-                        />
-                    </div>
-                </div>
-
-                {/* Column 2: Analytics & Stats (Desktop) / Donut Chart (Mobile) */}
-                <div className="space-y-6">
-                    {/* Donut Chart Card */}
-                    <div className="bg-card-dark p-6 rounded-3xl border border-gray-800 shadow-xl h-fit">
-                        <h3 className="text-white font-bold mb-4 text-lg">Expense Breakdown</h3>
-                        <div className="flex flex-col items-center">
-                            {/* Chart */}
-                            <div className="relative w-[180px] h-[180px] my-4">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                        <Pie
-                                            data={donutData}
-                                            innerRadius={60}
-                                            outerRadius={85}
-                                            paddingAngle={5}
-                                            dataKey="value"
-                                            stroke="none"
-                                            cornerRadius={4}
-                                        >
-                                            {donutData.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={entry.color} />
-                                            ))}
-                                        </Pie>
-                                        <Tooltip
-                                            contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px', color: '#fff' }}
-                                            itemStyle={{ color: '#fff' }}
-                                        />
-                                    </PieChart>
-                                </ResponsiveContainer>
-                                {/* Center Text */}
-                                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                    <span className="text-white font-bold text-2xl">{currency.symbol}{totalExpenseValue.toLocaleString()}</span>
-                                    <span className="text-gray-500 text-xs">Total</span>
-                                </div>
-                            </div>
-
-                            {/* Legend */}
-                            <div className="w-full space-y-3 mt-4">
-                                {donutData.map((d, i) => (
-                                    <div key={i} className="flex items-center justify-between text-sm">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-2.5 h-2.5 rounded-full shadow-[0_0_8px_rgba(0,0,0,0.5)]" style={{ backgroundColor: d.color, boxShadow: `0 0 10px ${d.color}40` }}></div>
-                                            <span className="text-gray-400 font-medium">{d.name}</span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-white font-bold">{currency.symbol}{d.value}</span>
-                                            <span className="text-gray-600 font-medium text-xs">({totalExpenseValue > 0 ? Math.round((d.value / totalExpenseValue) * 100) : 0}%)</span>
-                                        </div>
-                                    </div>
-                                ))}
+                    <div className="flex flex-col items-center">
+                        <div className="relative w-[220px] h-[220px] mb-8">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                        data={donutData}
+                                        innerRadius={75}
+                                        outerRadius={100}
+                                        paddingAngle={4}
+                                        dataKey="value"
+                                        stroke="none"
+                                        cornerRadius={8}
+                                    >
+                                        {donutData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.color} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: '#050505', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', color: '#fff', fontSize: '12px', fontWeight: 'bold' }}
+                                    />
+                                </PieChart>
+                            </ResponsiveContainer>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest mb-1">Spent</span>
+                                <span className="text-white font-black text-3xl tracking-tighter">{currency.symbol}{totalExpenseValue.toLocaleString()}</span>
                             </div>
                         </div>
+
+                        <div className="w-full grid grid-cols-2 gap-3">
+                            {donutData.slice(0, 4).map((d, i) => (
+                                <div key={i} className="bg-white/5 p-3 rounded-2xl border border-white/5 flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-2 h-2 rounded-full shadow-neon" style={{ backgroundColor: d.color }}></div>
+                                        <span className="text-gray-400 text-[10px] font-black uppercase truncate max-w-[60px]">{d.name}</span>
+                                    </div>
+                                    <span className="text-white font-black text-xs">{Math.round((d.value / totalExpenseValue) * 100)}%</span>
+                                </div>
+                            ))}
+                        </div>
                     </div>
+                </motion.div>
 
-                    {/* Monthly Budget Card */}
-                    <div className="bg-card-dark p-6 rounded-3xl border border-gray-800 shadow-xl">
-                        {(() => {
-                            // Calculate Budget Limit from Unfrozen Cards
-                            const unfrozenCards = (cards || []).filter(c => !c.frozen && !c.status?.includes('frozen'));
-                            const totalLimit = unfrozenCards.reduce((sum, card) => sum + (parseFloat(card.limit) || 0), 0);
-                            const budgetLimit = totalLimit > 0 ? totalLimit : 50000;
+                {/* Activity Bento */}
+                <motion.div variants={item} className="lg:col-span-7 space-y-6">
+                    <ActivityList
+                        transactions={transactions}
+                        onDelete={onDeleteTransaction}
+                        onEdit={handleEditClick}
+                    />
+                </motion.div>
 
-                            return (
-                                <>
-                                    <div className="flex justify-between items-end mb-4">
-                                        <div>
-                                            <h3 className="text-white font-bold text-lg">Monthly Budget</h3>
-                                            <p className="text-gray-400 text-xs mt-1">Limit: {currency.symbol}{budgetLimit.toLocaleString()}</p>
-                                        </div>
-                                        <div className="text-right">
-                                            <span className="text-xl font-bold text-white">{currency.symbol}{totals.expense.toLocaleString()}</span>
-                                            <span className="text-gray-500 text-xs block">Spent</span>
-                                        </div>
+                {/* Monthly Budget Bento */}
+                <motion.div variants={item} className="lg:col-span-6 glass-card p-8">
+                    {(() => {
+                        const unfrozenCards = (cards || []).filter(c => !c.frozen && !c.status?.includes('frozen'));
+                        const totalLimit = unfrozenCards.reduce((sum, card) => sum + (parseFloat(card.limit) || 0), 0);
+                        const budgetLimit = totalLimit > 0 ? totalLimit : 50000;
+                        const progress = Math.min((currentMonthData.monthlyExpense / budgetLimit) * 100, 100);
+
+                        return (
+                            <>
+                                <div className="flex justify-between items-end mb-8">
+                                    <div>
+                                        <h3 className="text-xl font-black tracking-tight text-white uppercase">Monthly Budget</h3>
+                                        <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest mt-1">
+                                            Limit: <span className="text-white">{currency.symbol}{budgetLimit.toLocaleString()}</span>
+                                        </p>
                                     </div>
-                                    <div className="relative h-3 bg-gray-800 rounded-full overflow-hidden">
-                                        <div
-                                            className={`absolute top-0 left-0 h-full rounded-full transition-all duration-1000 ${totals.expense > budgetLimit ? 'bg-neon-red' : 'bg-neon-green'}`}
-                                            style={{ width: `${Math.min((totals.expense / budgetLimit) * 100, 100)}%` }}
-                                        ></div>
+                                    <div className="text-right">
+                                        <span className="text-3xl font-black text-white tracking-tighter">{currency.symbol}{currentMonthData.monthlyExpense.toLocaleString()}</span>
+                                        <span className="text-gray-500 text-[10px] font-black block uppercase tracking-widest mt-1">Spent</span>
                                     </div>
-                                    <p className="text-right text-xs text-gray-500 mt-2">
-                                        {Math.max(0, budgetLimit - totals.expense).toLocaleString()} remaining
+                                </div>
+                                <div className="relative h-4 bg-white/5 rounded-full overflow-hidden border border-white/5">
+                                    <motion.div
+                                        initial={{ width: 0 }}
+                                        animate={{ width: `${progress}%` }}
+                                        transition={{ duration: 1.5, ease: "easeOut" }}
+                                        className={`absolute top-0 left-0 h-full rounded-full ${progress > 90 ? 'bg-neon-red' : 'bg-neon-green'} shadow-neon relative`}
+                                    >
+                                        <div className="absolute top-0 right-0 w-8 h-full bg-white/20 animate-pulse" />
+                                    </motion.div>
+                                </div>
+                                <div className="flex justify-between mt-4">
+                                    <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
+                                        {Math.max(0, budgetLimit - currentMonthData.monthlyExpense).toLocaleString()} remaining
                                     </p>
-                                </>
-                            );
+                                    <p className={`text-[10px] font-black uppercase tracking-widest ${progress > 90 ? 'text-neon-red' : 'text-neon-green'}`}>
+                                        {Math.round(progress)}% Used
+                                    </p>
+                                </div>
+                            </>
+                        );
+                    })()}
+                </motion.div>
+
+                {/* Subscriptions/Bills Bento */}
+                <motion.div variants={item} className="lg:col-span-6 glass-card p-8">
+                    <h3 className="text-xl font-black tracking-tight text-white mb-6 uppercase">Bills & Subs</h3>
+                    <div className="space-y-4">
+                        {(() => {
+                            const billTx = (transactions || [])
+                                .filter(t => t?.category === 'Bills' || t?.category === 'Subscriptions' || t?.title?.toLowerCase()?.includes('subscription'))
+                                .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+                            const uniqueBills = [];
+                            const seenTitles = new Set();
+                            billTx.forEach(tx => {
+                                const key = tx.title.toLowerCase();
+                                if (!seenTitles.has(key)) {
+                                    seenTitles.add(key);
+                                    uniqueBills.push(tx);
+                                }
+                            });
+
+                            if (uniqueBills.length === 0) {
+                                return <div className="h-24 flex items-center justify-center text-gray-500 text-[10px] font-black uppercase tracking-widest">No recurring bills found</div>;
+                            }
+
+                            return uniqueBills.slice(0, 3).map((bill, i) => {
+                                const lastDate = new Date(bill.date);
+                                const nextDate = new Date(lastDate);
+                                nextDate.setMonth(nextDate.getMonth() + 1);
+                                const isDue = nextDate > new Date();
+
+                                return (
+                                    <div key={i} className="flex items-center justify-between p-3 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all cursor-pointer group">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded-xl bg-surface-dark flex items-center justify-center font-black text-lg text-white group-hover:bg-neon-green group-hover:text-black transition-all">
+                                                {bill.title.charAt(0).toUpperCase()}
+                                            </div>
+                                            <div>
+                                                <p className="text-white text-sm font-black truncate max-w-[120px]">{bill.title}</p>
+                                                <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest">
+                                                    {isDue ? `Next: ${nextDate.toLocaleDateString()}` : 'Settled'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <span className="text-neon-green font-black tracking-tight">{bill.amount}</span>
+                                    </div>
+                                );
+                            });
                         })()}
                     </div>
-
-                    {/* Upcoming Bills */}
-                    {/* Upcoming Bills (Projected) */}
-                    <div className="bg-card-dark p-6 rounded-3xl border border-gray-800 shadow-xl">
-                        <h3 className="text-white font-bold mb-4 text-lg">Upcoming Bills</h3>
-                        <div className="space-y-4">
-                            {/* Logic: Find last transaction for Bills/Subscriptions and project next date */}
-                            {(() => {
-                                const billTx = transactions
-                                    .filter(t => t.category === 'Bills' || t.category === 'Entertainment' || t.title.toLowerCase().includes('subscription'))
-                                    .sort((a, b) => new Date(b.date) - new Date(a.date)); // Recent first
-
-                                // Simple deduplication by title (assuming recurring names are same)
-                                const uniqueBills = [];
-                                const seenTitles = new Set();
-
-                                billTx.forEach(tx => {
-                                    const key = tx.title.toLowerCase();
-                                    if (!seenTitles.has(key)) {
-                                        seenTitles.add(key);
-                                        uniqueBills.push(tx);
-                                    }
-                                });
-
-                                if (uniqueBills.length === 0) {
-                                    return <p className="text-gray-500 text-xs text-center py-4">No recurring bills detected.</p>;
-                                }
-
-                                return uniqueBills.slice(0, 3).map((bill, i) => {
-                                    const lastDate = new Date(bill.date);
-                                    const nextDate = new Date(lastDate);
-                                    nextDate.setMonth(nextDate.getMonth() + 1); // Project 1 month forward
-
-                                    const isDue = nextDate > new Date(); // If next date is in future
-                                    const dueString = isDue
-                                        ? `Due ${nextDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
-                                        : `Paid ${lastDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
-
-                                    return (
-                                        <div key={i} className="flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs ${bill.title.toLowerCase().includes('netflix') ? 'bg-red-500/10 text-red-500' :
-                                                    bill.title.toLowerCase().includes('spotify') ? 'bg-green-500/10 text-green-500' :
-                                                        'bg-brand-blue/10 text-brand-blue'
-                                                    }`}>
-                                                    {bill.title.charAt(0).toUpperCase()}
-                                                </div>
-                                                <div>
-                                                    <p className="text-white text-sm font-bold truncate max-w-[100px]">{bill.title}</p>
-                                                    <p className="text-gray-500 text-xs">{dueString}</p>
-                                                </div>
-                                            </div>
-                                            <span className="text-white font-medium">{bill.amount}</span>
-                                        </div>
-                                    );
-                                });
-                            })()}
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-
-            {/* Mobile-only Activity List position */}
-            <div className="lg:hidden">
-                <ActivityList
-                    transactions={transactions}
-                    onDelete={onDeleteTransaction}
-                    onEdit={handleEditClick}
-                />
-            </div>
-
+                </motion.div>
+            </motion.div>
         </div>
     );
 }
