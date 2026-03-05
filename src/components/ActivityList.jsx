@@ -35,34 +35,34 @@ export default function ActivityList({ transactions, onDelete, onEdit }) {
 
     return (
         <div className="flex flex-col h-full">
-            <div className="flex justify-between items-end mb-6">
+            <div className="flex justify-between items-end mb-4 md:mb-6">
                 <div>
-                    <h2 className="text-xl font-black text-white uppercase tracking-tight">Today's Velocity</h2>
-                    <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest mt-1">Daily Stream</p>
+                    <h2 className="text-lg md:text-xl font-black text-white uppercase tracking-tight">Transactions Activity</h2>
+                    <p className="text-gray-500 text-[8px] md:text-[10px] font-black uppercase tracking-widest mt-1">Daily Stream</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 md:gap-2">
                     <button
                         onClick={() => setDateFilter('')}
-                        className={`p-2.5 rounded-xl border transition-all ${!dateFilter ? 'opacity-0 pointer-events-none' : 'glass border-white/5 text-neon-red hover:bg-neon-red/10'}`}
+                        className={`p-2 md:p-2.5 rounded-lg md:rounded-xl border transition-all ${!dateFilter ? 'opacity-0 pointer-events-none' : 'glass border-white/5 text-neon-red hover:bg-neon-red/10'}`}
                         title="Clear Date Filter"
                     >
-                        <X size={18} />
+                        <X size={16} md:size={18} />
                     </button>
 
                     <motion.button
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={() => setShowCalendar(!showCalendar)}
-                        className={`p-2.5 rounded-xl border transition-all ${dateFilter || showCalendar ? 'bg-neon-green border-neon-green text-black shadow-neon' : 'glass border-white/5 text-gray-400 hover:text-white'}`}
+                        className={`p-2 md:p-2.5 rounded-lg md:rounded-xl border transition-all ${dateFilter || showCalendar ? 'bg-neon-green border-neon-green text-black shadow-neon' : 'glass border-white/5 text-gray-400 hover:text-white'}`}
                     >
-                        <Calendar size={18} />
+                        <Calendar size={16} md:size={18} />
                     </motion.button>
 
                     <button
                         onClick={() => setShowAll(!showAll)}
-                        className="glass px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-white border-white/5 transition-all"
+                        className="glass px-3 md:px-4 py-2 md:py-2.5 rounded-lg md:rounded-xl text-[8px] md:text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-white border-white/5 transition-all"
                     >
-                        {showAll ? 'Collapse All' : 'Expand View'}
+                        {showAll ? 'Collapse' : 'Expand'}
                     </button>
                 </div>
             </div>
@@ -86,17 +86,17 @@ export default function ActivityList({ transactions, onDelete, onEdit }) {
             )}
 
             {/* Filter Chips */}
-            <div className="flex gap-2 overflow-x-auto pb-6 scrollbar-hide">
+            <div className="flex gap-1.5 md:gap-2 overflow-x-auto pb-4 md:pb-6 scrollbar-hide">
                 {categories.map((cat, idx) => (
                     <motion.button
                         key={idx}
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={() => setActiveCategory(cat)}
-                        className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all
+                        className={`px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl text-[8px] md:text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all
                         ${activeCategory === cat
-                                ? 'bg-white text-black shadow-xl'
-                                : 'glass text-gray-500 border-white/5 hover:text-white'}`}
+                                ? 'bg-neon-green text-black shadow-[0_0_15px_rgba(34,197,94,0.4)]'
+                                : 'bg-white/5 text-gray-400 border border-white/5 hover:text-white'}`}
                     >
                         {cat}
                     </motion.button>
@@ -104,7 +104,7 @@ export default function ActivityList({ transactions, onDelete, onEdit }) {
             </div>
 
             {/* List */}
-            <div className="space-y-3 flex-1">
+            <div className={`space-y-3 flex-1 ${showAll ? 'max-h-[500px] overflow-y-auto pr-2 scrollbar-premium' : ''}`}>
                 <AnimatePresence mode="popLayout">
                     {displayedTransactions.length > 0 ? (
                         displayedTransactions.map((tx, index) => (
@@ -114,23 +114,23 @@ export default function ActivityList({ transactions, onDelete, onEdit }) {
                                 initial={{ opacity: 0, x: -20 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ delay: index * 0.05 }}
-                                className="group relative flex items-center justify-between glass-card p-4 border-white/5 hover:bg-white/5 transition-all cursor-pointer"
+                                className="group relative flex items-center justify-between glass-card p-3 md:p-4 border-white/5 hover:bg-white/5 transition-all cursor-pointer"
                             >
-                                <div className="flex items-center gap-4">
-                                    <div className={`p-3 rounded-2xl shadow-lg ${tx.bg} ${tx.color} group-hover:scale-110 transition-transform duration-500`}>
-                                        <tx.icon size={20} />
+                                <div className="flex items-center gap-3 md:gap-4">
+                                    <div className={`p-2.5 md:p-3 rounded-xl md:rounded-2xl shadow-lg ${tx.bg} ${tx.color} group-hover:scale-110 transition-transform duration-500`}>
+                                        <tx.icon size={18} md:size={20} />
                                     </div>
                                     <div>
-                                        <h3 className="text-white font-black text-sm tracking-tight">{tx.title}</h3>
+                                        <h3 className="text-white font-black text-xs md:text-sm tracking-tight">{tx.title}</h3>
                                         <div className="flex items-center gap-2 mt-0.5">
-                                            <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">{tx.category}</span>
+                                            <span className="text-gray-500 text-[8px] md:text-[10px] font-black uppercase tracking-widest">{tx.category}</span>
                                             <span className="w-1 h-1 bg-gray-700 rounded-full"></span>
-                                            <span className="text-gray-600 text-[10px] font-black uppercase tracking-widest">{getRelativeTime(tx.date)}</span>
+                                            <span className="text-gray-600 text-[8px] md:text-[10px] font-black uppercase tracking-widest">{getRelativeTime(tx.date)}</span>
                                         </div>
                                     </div>
                                 </div>
-                                <div className="text-right mr-2 group-hover:opacity-0 transition-opacity">
-                                    <p className={`font-black text-lg tracking-tighter ${tx.amount.startsWith('+') ? 'text-neon-green' : 'text-white'}`}>
+                                <div className="text-right mr-1 md:mr-2 group-hover:opacity-0 transition-opacity">
+                                    <p className={`font-black text-base md:text-lg tracking-tighter ${tx.amount.startsWith('+') ? 'text-neon-green' : 'text-white'}`}>
                                         {tx.amount}
                                     </p>
                                 </div>

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
     BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
     LineChart, Line, AreaChart, Area, CartesianGrid, PieChart, Pie
@@ -10,27 +10,20 @@ import { CATEGORY_COLORS } from '../utils/constants';
 export default function Analytics({ transactions, currency, cards }) {
     const [view, setView] = useState('charts'); // 'charts' | 'reports'
     const [timeRange, setTimeRange] = useState('Month');
+    const [isVisible, setIsVisible] = useState(false);
 
-    const {
-        chartData,
-        totalSpent,
-        totalIncome,
-        savingsRate,
-        highestSpent,
-        topCategories,
-        trendData,
-        donutData,
-        monthlyReports,
-        dailyAllowance,
-        projectedSpend,
-        daysRemaining,
-        periodLabel
-    } = useMemo(() => {
-        const parseAmount = (amtStr) => {
-            if (!amtStr) return 0;
-            return Math.abs(parseFloat(amtStr.replace(/[^\d.-]/g, '')));
-        };
+    // Prioritize interaction: Wait for entrance animation before rendering charts
+    useEffect(() => {
+        const timer = setTimeout(() => setIsVisible(true), 600);
+        return () => clearTimeout(timer);
+    }, []);
 
+    const parseAmount = (amtStr) => {
+        if (!amtStr) return 0;
+        return Math.abs(parseFloat(amtStr.replace(/[^\d.-]/g, '')));
+    };
+
+    const monthlySummary = useMemo(() => {
         const today = new Date();
         const startOfCurrentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
         const endOfCurrentMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
@@ -38,59 +31,59 @@ export default function Analytics({ transactions, currency, cards }) {
         const currentDayOfMonth = today.getDate();
         const remainingDaysInMonth = Math.max(daysInCurrentMonth - currentDayOfMonth + 1, 1);
 
-        // --- Monthly data for accurate Allowance calculation ---
         const currentMonthTransactions = (transactions || []).filter(t => {
             if (!t.date) return false;
             const txDate = new Date(t.date);
             return txDate >= startOfCurrentMonth && txDate <= endOfCurrentMonth;
         });
-        const cmExpenses = currentMonthTransactions.filter(t => t?.amount?.startsWith('-'));
-        const cmIncomes = currentMonthTransactions.filter(t => t?.amount?.startsWith('+'));
-        const cmSpent = cmExpenses.reduce((acc, tx) => acc + parseAmount(tx.amount), 0);
-        const cmIncome = cmIncomes.reduce((acc, tx) => acc + parseAmount(tx.amount), 0);
 
-        // Sync with Dashboard logic: Use card limits or default 50k
+        const cmSpent = currentMonthTransactions
+            .filter(t => t?.amount?.startsWith('-'))
+            .reduce((acc, tx) => acc + parseAmount(tx.amount), 0);
+
+        const cmIncome = currentMonthTransactions
+            .filter(t => t?.amount?.startsWith('+'))
+            .reduce((acc, tx) => acc + parseAmount(tx.amount), 0);
+
         const unfrozenCards = (cards || []).filter(c => !c.frozen && !c.status?.includes('frozen'));
         const totalCardLimit = unfrozenCards.reduce((sum, card) => sum + (parseFloat(card.limit) || 0), 0);
         const budgetLimit = totalCardLimit > 0 ? totalCardLimit : (cmIncome > 0 ? cmIncome * 0.8 : 50000);
 
-        const allowance = Math.max((budgetLimit - cmSpent) / remainingDaysInMonth, 0);
-        const projection = (cmSpent / currentDayOfMonth) * daysInCurrentMonth;
+        return {
+            allowance: Math.max((budgetLimit - cmSpent) / remainingDaysInMonth, 0),
+            projection: (cmSpent / currentDayOfMonth) * daysInCurrentMonth,
+            daysRemaining: remainingDaysInMonth,
+            cmIncome,
+            cmSpent
+        };
+    }, [transactions, cards, currency]);
 
-        let periodStart, periodEnd, daysInPeriod, currentDayInPeriod, label;
+    const periodData = useMemo(() => {
+        const today = new Date();
+        let periodStart, periodEnd, label;
 
         if (timeRange === 'Week') {
-            const dayOfWeek = today.getDay(); // 0 is Sunday
-            const diff = today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); // Start on Monday
+            const dayOfWeek = today.getDay();
+            const diff = today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
             periodStart = new Date(today);
             periodStart.setDate(diff);
             periodStart.setHours(0, 0, 0, 0);
-
             periodEnd = new Date(periodStart);
             periodEnd.setDate(periodStart.getDate() + 6);
             periodEnd.setHours(23, 59, 59, 999);
-
-            daysInPeriod = 7;
-            const diffTime = Math.abs(today.getTime() - periodStart.getTime());
-            currentDayInPeriod = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
             label = 'Weekly';
         } else if (timeRange === 'Overall') {
+            periodStart = new Date(0);
+            periodEnd = new Date(today.getFullYear() + 10, 0, 1);
             label = 'Overall';
-            periodStart = new Date(0); // All time
-            periodEnd = new Date(today.getFullYear() + 10, 0, 1); // Way in future
-            daysInPeriod = 365; // Not used for projection here
-            currentDayInPeriod = 1;
-        } else { // Default to Month
+        } else {
             periodStart = new Date(today.getFullYear(), today.getMonth(), 1);
             periodStart.setHours(0, 0, 0, 0);
             periodEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
             periodEnd.setHours(23, 59, 59, 999);
-            daysInPeriod = periodEnd.getDate();
-            currentDayInPeriod = today.getDate();
             label = 'Monthly';
         }
 
-        // Filter transactions based on the determined period for Charts and Summaries
         const periodTransactions = (transactions || []).filter(t => {
             if (timeRange === 'Overall') return true;
             if (!t.date) return false;
@@ -100,16 +93,13 @@ export default function Analytics({ transactions, currency, cards }) {
 
         const periodExpenses = periodTransactions.filter(t => t?.amount?.startsWith('-'));
         const periodIncomes = periodTransactions.filter(t => t?.amount?.startsWith('+'));
-
         const totalExp = periodExpenses.reduce((acc, tx) => acc + parseAmount(tx.amount), 0);
         const totalInc = periodIncomes.reduce((acc, tx) => acc + parseAmount(tx.amount), 0);
-        const savings = totalInc - totalExp;
-        const rate = totalInc > 0 ? Math.round((savings / totalInc) * 100) : 0;
+        const savingsRate = totalInc > 0 ? Math.round(((totalInc - totalExp) / totalInc) * 100) : 0;
 
+        // Chart Data Calculation
         const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-        // --- Charts Data (Period Specific) ---
-        let relevantTx = [];
+        let chartData = [];
         if (timeRange === 'Week') {
             const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
             const dayMap = { 'Mon': 0, 'Tue': 0, 'Wed': 0, 'Thu': 0, 'Fri': 0, 'Sat': 0, 'Sun': 0 };
@@ -118,43 +108,34 @@ export default function Analytics({ transactions, currency, cards }) {
                 const dayName = weekDays[date.getDay()];
                 if (dayMap[dayName] !== undefined) dayMap[dayName] += parseAmount(tx.amount);
             });
-            relevantTx = Object.entries(dayMap).map(([label, amount]) => ({ label, amount }));
+            chartData = Object.entries(dayMap).map(([label, amount]) => ({ label, amount }));
             const sorter = { 'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 'Fri': 5, 'Sat': 6, 'Sun': 7 };
-            relevantTx.sort((a, b) => sorter[a.label] - sorter[b.label]);
+            chartData.sort((a, b) => sorter[a.label] - sorter[b.label]);
         } else if (timeRange === 'Overall') {
-            // Aggregate by month for overall view
             const monthMap = {};
-            // Optionally initialize with all months of the current year or just available months
             (transactions || []).forEach(tx => {
                 if (!tx?.date || !tx?.amount?.startsWith('-')) return;
                 const d = new Date(tx.date);
                 const mName = monthNames[d.getMonth()];
                 monthMap[mName] = (monthMap[mName] || 0) + parseAmount(tx.amount);
             });
-            // Order by month index
-            relevantTx = monthNames.map(m => ({ label: m, amount: monthMap[m] || 0 }));
+            chartData = monthNames.map(m => ({ label: m, amount: monthMap[m] || 0 }));
         } else {
-            // Daily breakdown for the current month
             const dailyMap = {};
-            for (let i = 1; i <= daysInCurrentMonth; i++) dailyMap[i] = 0;
-
+            const daysInMonth = periodEnd.getDate();
+            for (let i = 1; i <= daysInMonth; i++) dailyMap[i] = 0;
             periodExpenses.forEach(tx => {
-                const date = new Date(tx?.date || today);
-                const day = date.getDate();
+                const day = new Date(tx?.date || today).getDate();
                 if (dailyMap[day] !== undefined) dailyMap[day] += parseAmount(tx.amount);
             });
-
-            relevantTx = Object.entries(dailyMap).map(([day, amount]) => ({
-                label: day,
-                amount
-            })).sort((a, b) => parseInt(a.label) - parseInt(b.label));
+            chartData = Object.entries(dailyMap).map(([day, amount]) => ({ label: day, amount }))
+                .sort((a, b) => parseInt(a.label) - parseInt(b.label));
         }
 
         const catMap = {};
         periodExpenses.forEach(tx => {
-            const amt = parseAmount(tx.amount);
             const cat = tx.category || 'Other';
-            catMap[cat] = (catMap[cat] || 0) + amt;
+            catMap[cat] = (catMap[cat] || 0) + parseAmount(tx.amount);
         });
 
         const catData = Object.entries(catMap)
@@ -169,42 +150,39 @@ export default function Analytics({ transactions, currency, cards }) {
         periodTransactions.forEach(tx => {
             const date = new Date(tx?.date || today);
             const sortKey = date.getTime();
-            const key = `${date.getMonth() + 1}/${date.getDate()}`;
-            if (!trendMap[sortKey]) trendMap[sortKey] = { date: key, amount: 0, income: 0 };
-            const isIncome = (tx?.amount || '').startsWith('+');
-            if (isIncome) trendMap[sortKey].income += parseAmount(tx.amount);
+            if (!trendMap[sortKey]) trendMap[sortKey] = { date: `${date.getMonth() + 1}/${date.getDate()}`, amount: 0, income: 0 };
+            if (tx?.amount?.startsWith('+')) trendMap[sortKey].income += parseAmount(tx.amount);
             else trendMap[sortKey].amount += parseAmount(tx.amount);
         });
 
-        let sortedTrend = Object.keys(trendMap).sort().map(key => trendMap[key]);
-        let runningInc = 0;
-        let runningExp = 0;
+        let runningInc = 0, runningExp = 0;
+        const trendData = Object.keys(trendMap).sort().map(key => {
+            const d = trendMap[key];
+            runningInc += d.income;
+            runningExp += d.amount;
+            return { ...d, net: runningInc - runningExp };
+        }).slice(-20);
 
-        const enhancedTrendData = sortedTrend.map(day => {
-            runningInc += day.income;
-            runningExp += day.amount;
-            return {
-                ...day,
-                cumulativeIncome: runningInc,
-                cumulativeExpense: runningExp,
-                net: runningInc - runningExp
-            };
-        });
+        return {
+            chartData,
+            totalSpent: totalExp,
+            totalIncome: totalInc,
+            savingsRate,
+            catData,
+            trendData,
+            periodLabel: label
+        };
+    }, [transactions, timeRange, currency]);
 
-        // --- Monthly Reports Data (Always over all time) ---
+    const reports = useMemo(() => {
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         const reportsMap = {};
         (transactions || []).forEach(tx => {
             if (!tx.date) return;
             const d = new Date(tx.date);
             const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
             if (!reportsMap[key]) {
-                reportsMap[key] = {
-                    month: monthNames[d.getMonth()],
-                    year: d.getFullYear(),
-                    income: 0,
-                    expense: 0,
-                    categories: {}
-                };
+                reportsMap[key] = { month: monthNames[d.getMonth()], year: d.getFullYear(), income: 0, expense: 0, categories: {} };
             }
             const amt = parseAmount(tx.amount);
             if (tx.amount.startsWith('+')) reportsMap[key].income += amt;
@@ -215,55 +193,40 @@ export default function Analytics({ transactions, currency, cards }) {
             }
         });
 
-        const reports = Object.entries(reportsMap)
-            .sort((a, b) => b[0].localeCompare(a[0]))
-            .map(([key, data]) => {
-                const topCat = Object.entries(data.categories).sort((a, b) => b[1] - a[1])[0];
-                return {
-                    id: key,
-                    ...data,
-                    net: data.income - data.expense,
-                    topCategory: topCat ? topCat[0] : 'N/A'
-                };
-            });
+        return Object.entries(reportsMap).sort((a, b) => b[0].localeCompare(a[0])).map(([key, data]) => {
+            const topCat = Object.entries(data.categories).sort((a, b) => b[1] - a[1])[0];
+            return { id: key, ...data, net: data.income - data.expense, topCategory: topCat ? topCat[0] : 'N/A' };
+        });
+    }, [transactions, currency]);
 
-        return {
-            chartData: relevantTx,
-            totalSpent: totalExp,
-            totalIncome: totalInc,
-            savingsRate: rate,
-            highestSpent: relevantTx.length > 0 ? Math.max(...relevantTx.map(d => d.amount)) : 0,
-            topCategories: catData.slice(0, 5),
-            trendData: enhancedTrendData.slice(-20),
-            donutData: catData,
-            monthlyReports: reports,
-            dailyAllowance: isFinite(allowance) ? allowance : 0,
-            projectedSpend: isFinite(projection) ? projection : 0,
-            daysRemaining: remainingDaysInMonth,
-            periodLabel: label
-        };
-    }, [transactions, timeRange]);
+    // Cleanup legacy destructuring
+    const { chartData, totalSpent, totalIncome, savingsRate, catData, trendData, periodLabel } = periodData;
+    const { allowance, projection: projectedSpend, daysRemaining } = monthlySummary;
+    const highestSpent = chartData.length > 0 ? Math.max(...chartData.map(d => d.amount)) : 0;
+    const topCategories = catData.slice(0, 5);
+    const donutData = catData;
+    const monthlyReports = reports;
 
-    const container = {
+    const container = useMemo(() => ({
         hidden: { opacity: 0 },
-        show: { opacity: 1, transition: { staggerChildren: 0.1 } }
-    };
+        show: { opacity: 1, transition: { staggerChildren: 0.03 } }
+    }), []);
 
-    const item = {
-        hidden: { opacity: 0, y: 20 },
+    const item = useMemo(() => ({
+        hidden: { opacity: 0, y: 10 },
         show: { opacity: 1, y: 0 }
-    };
+    }), []);
 
     return (
-        <div className="pt-8 px-4 md:px-6 pb-32 md:pb-12 max-w-7xl mx-auto min-h-screen">
+        <div className="pt-4 md:pt-8 px-4 md:px-6 pb-32 md:pb-12 max-w-7xl mx-auto min-h-screen">
             {/* Header */}
-            <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 md:gap-0 mb-12">
+            <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 md:gap-0 mb-8 md:mb-12">
                 <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
-                    <h1 className="text-3xl font-black tracking-tight text-white uppercase flex items-center gap-3">
-                        <BarChart3 className="text-neon-green" size={32} />
+                    <h1 className="text-xl md:text-3xl font-black tracking-tight text-white uppercase flex items-center gap-3">
+                        <BarChart3 className="text-neon-green" size={24} />
                         Analytics
                     </h1>
-                    <p className="text-gray-400 text-[10px] font-black uppercase tracking-[0.3em] mt-1">Deep Financial Insights</p>
+                    <p className="text-gray-400 text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] mt-1">Deep Financial Insights</p>
                 </motion.div>
 
                 <div className="w-full md:w-auto flex items-center justify-between md:justify-end gap-4">
@@ -305,180 +268,219 @@ export default function Analytics({ transactions, currency, cards }) {
                         initial="hidden"
                         animate="show"
                         exit={{ opacity: 0, y: -20 }}
-                        className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8"
+                        className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-12 gap-4 md:gap-6 mb-8 auto-rows-min"
                     >
-                        {/* Hero Stats */}
-                        <motion.div variants={item} className="lg:col-span-4 glass-card p-8 relative overflow-hidden group">
-                            <div className="absolute -top-10 -right-10 w-40 h-40 bg-neon-green/10 blur-[80px] rounded-full group-hover:bg-neon-green/20 transition-all duration-700" />
-                            <div className="flex justify-between items-start mb-6">
-                                <span className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Savings Rate</span>
-                                <div className="p-2 bg-neon-green/10 text-neon-green rounded-lg">
-                                    <Target size={16} />
+                        {/* 1. Hero Savings Rate Card - Large Bento */}
+                        <motion.div variants={item} className="md:col-span-4 lg:col-span-8 glass-card p-6 md:p-10 relative overflow-hidden group min-h-[300px] flex flex-col justify-between">
+                            <div className="hidden md:block absolute -top-20 -right-20 w-80 h-80 bg-neon-green/10 blur-[100px] rounded-full group-hover:bg-neon-green/20 transition-all duration-1000" />
+                            <div className="relative z-10">
+                                <div className="flex justify-between items-start mb-6">
+                                    <div>
+                                        <p className="text-gray-500 text-[10px] md:text-xs font-black uppercase tracking-widest leading-tight mb-2">Portfolio Velocity</p>
+                                        <h2 className="text-white text-xl md:text-2xl font-black uppercase tracking-tight">Savings Rate</h2>
+                                    </div>
+                                    <div className="p-3 bg-neon-green/10 rounded-2xl text-neon-green shadow-neon/20">
+                                        <Target size={24} />
+                                    </div>
+                                </div>
+                                <div className="flex items-baseline gap-2">
+                                    <h2 className="text-5xl md:text-8xl font-black text-white tracking-tighter">{Math.round(savingsRate)}%</h2>
+                                    <TrendingUp size={24} className="text-neon-green mb-2" />
                                 </div>
                             </div>
-                            <div className="flex items-baseline gap-2">
-                                <h3 className="text-6xl font-black text-white tracking-tighter">{savingsRate}%</h3>
-                                <span className="text-neon-green text-xs font-black uppercase tracking-widest">Saved</span>
-                            </div>
-                            <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest mt-4">Percentage of income saved</p>
-                            <div className="mt-8 h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                                <motion.div
-                                    initial={{ width: 0 }}
-                                    animate={{ width: `${savingsRate}%` }}
-                                    transition={{ duration: 1.5, ease: "easeOut" }}
-                                    className="h-full bg-neon-green shadow-neon"
-                                />
+
+                            <div className="relative z-10 w-full">
+                                <div className="flex justify-between text-[10px] font-black uppercase tracking-widest mb-3">
+                                    <span className="text-gray-500">Efficiency Index</span>
+                                    <span className="text-neon-green">{savingsRate}% optimized</span>
+                                </div>
+                                <div className="h-3 w-full bg-white/5 rounded-full overflow-hidden border border-white/5 p-[2px]">
+                                    <motion.div
+                                        initial={{ width: 0 }}
+                                        animate={{ width: `${savingsRate}%` }}
+                                        transition={{ duration: 1.5, ease: "circOut" }}
+                                        className="h-full bg-gradient-to-r from-neon-green/50 to-neon-green rounded-full shadow-neon"
+                                    />
+                                </div>
                             </div>
                         </motion.div>
 
-                        <motion.div variants={item} className="lg:col-span-4 glass-card p-8 flex flex-col justify-between">
+                        {/* 2. Quick Metrics Stack - Right Bento */}
+                        <div className="md:col-span-4 lg:col-span-4 grid grid-cols-1 gap-4 md:gap-6">
+                            <motion.div variants={item} className="glass-card p-6 flex flex-col justify-between border-neon-green/20 relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 w-24 h-24 bg-neon-green/5 blur-2xl rounded-full" />
+                                <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest mb-1">{periodLabel} Balance</p>
+                                <div className="flex items-end justify-between">
+                                    <h3 className="text-3xl font-black text-white tracking-tighter">{currency.symbol}{(totalIncome - totalSpent).toLocaleString()}</h3>
+                                    <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-neon-green/10 text-neon-green text-[8px] font-black uppercase border border-neon-green/20">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-neon-green animate-pulse" />
+                                        Stable
+                                    </div>
+                                </div>
+                            </motion.div>
+
+                            <motion.div variants={item} className="glass-card p-6 flex flex-col justify-between bg-white/[0.02] border-white/5">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest mb-1">Inflow</p>
+                                        <h3 className="text-2xl font-black text-neon-green tracking-tight">{currency.symbol}{totalIncome.toLocaleString()}</h3>
+                                    </div>
+                                    <div className="p-2 bg-neon-green/10 rounded-xl text-neon-green">
+                                        <TrendingUp size={16} />
+                                    </div>
+                                </div>
+                                <div className="pt-4 mt-4 border-t border-white/5 flex justify-between items-start">
+                                    <div>
+                                        <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest mb-1">Outflow</p>
+                                        <h3 className="text-2xl font-black text-neon-red tracking-tight">{currency.symbol}{totalSpent.toLocaleString()}</h3>
+                                    </div>
+                                    <div className="p-2 bg-neon-red/10 rounded-xl text-neon-red">
+                                        <TrendingDown size={16} />
+                                    </div>
+                                </div>
+                            </motion.div>
+                        </div>
+
+                        {/* 3. Operational Logic - Lower Bento */}
+                        <motion.div variants={item} className="md:col-span-2 lg:col-span-6 glass-card p-6 md:p-8 border-brand-blue/20 bg-brand-blue/5 flex flex-col justify-between min-h-[180px]">
+                            <div className="flex justify-between items-start mb-4">
+                                <div>
+                                    <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Safe Daily Spend</p>
+                                    <p className="text-brand-blue text-[8px] font-black uppercase tracking-widest opacity-60">Liquidity Index</p>
+                                </div>
+                                <div className="p-3 bg-brand-blue/20 rounded-2xl text-brand-blue shadow-lg shadow-brand-blue/10">
+                                    <Zap size={20} />
+                                </div>
+                            </div>
                             <div>
-                                <span className="text-gray-400 text-[10px] font-black uppercase tracking-widest">{periodLabel} Income</span>
-                                <div className="flex items-center gap-3 mt-2">
-                                    <h3 className="text-3xl font-black text-neon-green tracking-tighter">{currency.symbol}{totalIncome.toLocaleString()}</h3>
-                                    <ArrowUpRight size={20} className="text-neon-green opacity-50" />
-                                </div>
-                            </div>
-                            <div className="mt-6">
-                                <span className="text-gray-400 text-[10px] font-black uppercase tracking-widest">{periodLabel} Expenses</span>
-                                <div className="flex items-center gap-3 mt-2">
-                                    <h3 className="text-3xl font-black text-neon-red tracking-tighter">{currency.symbol}{totalSpent.toLocaleString()}</h3>
-                                    <ArrowDownRight size={20} className="text-neon-red opacity-50" />
-                                </div>
+                                <h2 className="text-4xl md:text-5xl font-black text-white tracking-tighter mb-2">{currency.symbol}{Math.round(allowance).toLocaleString()}</h2>
+                                <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest">
+                                    {timeRange === 'Overall' ? 'Averaged over all records' : `${daysRemaining} days remaining in cycle`}
+                                </p>
                             </div>
                         </motion.div>
 
-                        <motion.div variants={item} className="lg:col-span-4 glass-card p-8 border-neon-green/20 bg-neon-green/5">
-                            <span className="text-gray-400 text-[10px] font-black uppercase tracking-widest">{periodLabel} Balance</span>
-                            <h3 className="text-5xl font-black text-white tracking-tighter mt-4">
-                                {currency.symbol}{(totalIncome - totalSpent).toLocaleString()}
-                            </h3>
-                            <div className="flex items-center gap-2 mt-4 text-neon-green">
-                                <Activity size={14} className="animate-pulse" />
-                                <span className="text-[10px] font-black uppercase tracking-widest">Live Tracking</span>
-                            </div>
-                        </motion.div>
-
-                        {/* Money Management Insights */}
-                        <motion.div variants={item} className="lg:col-span-6 glass-card p-8 border-brand-blue/20 bg-brand-blue/5 overflow-hidden group relative">
-                            <div className="absolute -top-10 -right-10 w-40 h-40 bg-brand-blue/10 blur-[80px] rounded-full group-hover:bg-brand-blue/20 transition-all duration-700" />
-                            <div className="flex justify-between items-start mb-6">
+                        <motion.div variants={item} className="md:col-span-2 lg:col-span-6 glass-card p-6 md:p-8 border-neon-red/20 bg-neon-red/5 overflow-hidden group relative min-h-[180px] flex flex-col justify-between">
+                            <div className="hidden md:block absolute -top-10 -right-10 w-40 h-40 bg-neon-red/10 blur-[80px] rounded-full group-hover:bg-neon-red/20 transition-all duration-700" />
+                            <div className="flex justify-between items-start mb-4 relative z-10">
                                 <div>
-                                    <span className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Safe Daily Spend</span>
-                                    <p className="text-white text-xs font-black uppercase tracking-widest mt-1">Monthly Budget Pool</p>
+                                    <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">{periodLabel} Projection</span>
+                                    <p className="text-neon-red text-[8px] font-black uppercase tracking-widest mt-1">Forecast Variance</p>
                                 </div>
-                                <div className="p-2 bg-brand-blue/10 text-brand-blue rounded-lg">
-                                    <Zap size={16} />
-                                </div>
-                            </div>
-                            <div className="flex items-baseline gap-2">
-                                <h3 className="text-5xl font-black text-white tracking-tighter">{currency.symbol}{Math.round(dailyAllowance).toLocaleString()}</h3>
-                                <span className="text-brand-blue text-[10px] font-black uppercase tracking-widest">/ Day</span>
-                            </div>
-                            <p className="text-gray-500 text-[8px] font-black uppercase tracking-widest mt-4">Remaining safe limit for this month ({daysRemaining} days left)</p>
-                        </motion.div>
-
-                        <motion.div variants={item} className="lg:col-span-6 glass-card p-8 border-neon-red/20 bg-neon-red/5 overflow-hidden group relative">
-                            <div className="absolute -top-10 -right-10 w-40 h-40 bg-neon-red/10 blur-[80px] rounded-full group-hover:bg-neon-red/20 transition-all duration-700" />
-                            <div className="flex justify-between items-start mb-6">
-                                <div>
-                                    <span className="text-gray-400 text-[10px] font-black uppercase tracking-widest">{periodLabel} Projection</span>
-                                    <p className="text-white text-xs font-black uppercase tracking-widest mt-1">Burn Rate Estimate</p>
-                                </div>
-                                <div className="p-2 bg-neon-red/10 text-neon-red rounded-lg">
-                                    <TrendingUp size={16} />
+                                <div className="p-3 bg-neon-red/10 text-neon-red rounded-2xl shadow-lg shadow-neon-red/10">
+                                    <Activity size={20} />
                                 </div>
                             </div>
-                            <div className="flex items-baseline gap-2">
-                                <h3 className="text-5xl font-black text-white tracking-tighter">{currency.symbol}{Math.round(projectedSpend).toLocaleString()}</h3>
-                                <span className="text-neon-red text-[10px] font-black uppercase tracking-widest">Est. Total</span>
+                            <div className="relative z-10">
+                                <div className="flex items-baseline gap-2 mb-2">
+                                    <h3 className="text-4xl md:text-5xl font-black text-white tracking-tighter">{currency.symbol}{Math.round(projectedSpend).toLocaleString()}</h3>
+                                    <span className="text-neon-red text-[10px] font-black uppercase tracking-widest">Expected</span>
+                                </div>
+                                <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Anticipated total burn by period end</p>
                             </div>
-                            <p className="text-gray-500 text-[8px] font-black uppercase tracking-widest mt-4">Projected {periodLabel.toLowerCase()} spend based on current velocity</p>
                         </motion.div>
 
                         {/* Main Spending Bar Chart */}
-                        <motion.div variants={item} className="lg:col-span-8 glass-card p-8">
+                        <motion.div variants={item} className="lg:col-span-8 glass-card p-4 md:p-8">
                             <div className="flex justify-between items-center mb-8">
                                 <div>
-                                    <h3 className="text-xl font-black text-white uppercase tracking-tight">Expenses by Date</h3>
-                                    <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest mt-1">Daily spending breakdown</p>
+                                    <h3 className="text-lg md:text-xl font-black text-white uppercase tracking-tight">Expenses by Date</h3>
+                                    <p className="text-gray-400 text-[8px] md:text-[10px] font-black uppercase tracking-widest mt-1">Daily spending breakdown</p>
                                 </div>
                             </div>
-                            <div className="h-80 w-full">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={chartData}>
-                                        <defs>
-                                            <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="0%" stopColor="#ADFF2F" stopOpacity={1} />
-                                                <stop offset="100%" stopColor="#ADFF2F" stopOpacity={0.2} />
-                                            </linearGradient>
-                                        </defs>
-                                        <Tooltip
-                                            cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                                            contentStyle={{ backgroundColor: '#050505', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', color: '#fff', fontSize: '10px', fontWeight: '900' }}
-                                            itemStyle={{ color: '#fff' }}
-                                            labelStyle={{ color: 'rgba(255,255,255,0.5)' }}
-                                        />
-                                        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 10, fontWeight: 900 }} dy={10} />
-                                        <Bar dataKey="amount" radius={[8, 8, 8, 8]}>
-                                            {chartData.map((entry, index) => (
-                                                <Cell
-                                                    key={`cell-${index}`}
-                                                    fill={entry.amount === highestSpent ? '#FF4D4D' : 'url(#barGradient)'}
-                                                    className="transition-all duration-500"
-                                                />
-                                            ))}
-                                        </Bar>
-                                    </BarChart>
-                                </ResponsiveContainer>
+                            <div className="h-48 md:h-80 w-full flex items-center justify-center">
+                                {isVisible ? (
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={chartData}>
+                                            <defs>
+                                                <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="0%" stopColor="#ADFF2F" stopOpacity={1} />
+                                                    <stop offset="100%" stopColor="#ADFF2F" stopOpacity={0.2} />
+                                                </linearGradient>
+                                            </defs>
+                                            <Tooltip
+                                                cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                                                contentStyle={{
+                                                    backgroundColor: '#0A0A0A',
+                                                    border: '1px solid rgba(255,255,255,0.1)',
+                                                    borderRadius: '12px',
+                                                    color: '#fff',
+                                                    fontSize: '10px',
+                                                    fontWeight: '900',
+                                                    boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+                                                    backdropFilter: window.innerWidth > 768 ? 'blur(10px)' : 'none'
+                                                }}
+                                                itemStyle={{ color: '#fff', padding: '0px' }}
+                                                labelStyle={{ color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}
+                                                wrapperStyle={{ zIndex: 100 }}
+                                            />
+                                            <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 10, fontWeight: 900 }} dy={10} />
+                                            <Bar dataKey="amount" radius={[8, 8, 8, 8]} isAnimationActive={window.innerWidth > 768}>
+                                                {chartData.map((entry, index) => (
+                                                    <Cell
+                                                        key={`cell-${index}`}
+                                                        fill={entry.amount === highestSpent ? '#FF4D4D' : 'url(#barGradient)'}
+                                                    />
+                                                ))}
+                                            </Bar>
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                ) : (
+                                    <div className="w-12 h-12 rounded-full border-2 border-neon-green/20 border-t-neon-green animate-spin" />
+                                )}
                             </div>
                         </motion.div>
 
                         {/* Net Worth Trend Area Chart */}
-                        <motion.div variants={item} className="lg:col-span-4 glass-card p-8">
-                            <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2">Balance Trend</h3>
-                            <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest mb-8">Total growth over time</p>
-                            <div className="h-80 w-full">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <AreaChart data={trendData}>
-                                        <defs>
-                                            <linearGradient id="colorNet" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#ADFF2F" stopOpacity={0.4} />
-                                                <stop offset="95%" stopColor="#ADFF2F" stopOpacity={0} />
-                                            </linearGradient>
-                                        </defs>
-                                        <Tooltip
-                                            contentStyle={{ backgroundColor: '#050505', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', color: '#fff', fontSize: '10px', fontWeight: '900' }}
-                                            itemStyle={{ color: '#fff' }}
-                                            labelStyle={{ color: 'rgba(255,255,255,0.5)' }}
-                                        />
-                                        <XAxis dataKey="date" hide={false} axisLine={false} tickLine={false} tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 8, fontWeight: 900 }} />
-                                        <Area
-                                            type="monotone"
-                                            dataKey="net"
-                                            stroke="#ADFF2F"
-                                            strokeWidth={4}
-                                            fillOpacity={1}
-                                            fill="url(#colorNet)"
-                                            name="Profit/Loss"
-                                        />
-                                    </AreaChart>
-                                </ResponsiveContainer>
+                        <motion.div variants={item} className="lg:col-span-4 glass-card p-4 md:p-8">
+                            <h3 className="text-lg md:text-xl font-black text-white uppercase tracking-tight mb-2">Balance Trend</h3>
+                            <p className="text-gray-400 text-[8px] md:text-[10px] font-black uppercase tracking-widest mb-8">Total growth over time</p>
+                            <div className="h-48 md:h-80 w-full flex items-center justify-center">
+                                {isVisible ? (
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <AreaChart data={trendData}>
+                                            <defs>
+                                                <linearGradient id="colorNet" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor="#ADFF2F" stopOpacity={0.4} />
+                                                    <stop offset="95%" stopColor="#ADFF2F" stopOpacity={0} />
+                                                </linearGradient>
+                                            </defs>
+                                            <Tooltip
+                                                contentStyle={{
+                                                    backgroundColor: '#0A0A0A',
+                                                    border: '1px solid rgba(255,255,255,0.1)',
+                                                    borderRadius: '12px',
+                                                    color: '#fff',
+                                                    fontSize: '10px',
+                                                    fontWeight: '900',
+                                                    boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+                                                    backdropFilter: window.innerWidth > 768 ? 'blur(10px)' : 'none'
+                                                }}
+                                                itemStyle={{ color: '#fff', padding: '0px' }}
+                                                labelStyle={{ color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}
+                                                wrapperStyle={{ zIndex: 100 }}
+                                            />
+                                            <Area type="monotone" dataKey="net" stroke="#ADFF2F" strokeWidth={4} fillOpacity={1} fill="url(#colorNet)" isAnimationActive={window.innerWidth > 768} />
+                                        </AreaChart>
+                                    </ResponsiveContainer>
+                                ) : (
+                                    <div className="w-12 h-12 rounded-full border-2 border-neon-green/20 border-t-neon-green animate-spin" />
+                                )}
                             </div>
                         </motion.div>
 
-                        {/* Category Mix */}
-                        <motion.div variants={item} className="lg:col-span-5 glass-card p-8">
-                            <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2">Top Spending Categories</h3>
-                            <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest mb-8">{periodLabel} Category breakdown</p>
+                        {/* Category Breakdown */}
+                        <motion.div variants={item} className="lg:col-span-5 glass-card p-4 md:p-8">
+                            <h3 className="text-lg md:text-xl font-black text-white uppercase tracking-tight mb-2">Top Categories</h3>
+                            <p className="text-gray-400 text-[8px] md:text-[10px] font-black uppercase tracking-widest mb-8">Monthly distribution</p>
                             <div className="space-y-6">
                                 {topCategories.map((cat, i) => (
-                                    <div key={i} className="flex flex-col gap-2">
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-white text-xs font-black uppercase tracking-widest">{cat.name}</span>
-                                            <span className="text-white font-black text-sm">{currency.symbol}{cat.value.toLocaleString()}</span>
+                                    <div key={i} className="group cursor-pointer">
+                                        <div className="flex justify-between items-end mb-2">
+                                            <span className="text-white text-[10px] md:text-xs font-black uppercase tracking-widest">{cat.name}</span>
+                                            <span className="text-gray-500 text-[10px] md:text-xs font-black">{currency.symbol}{cat.value.toLocaleString()}</span>
                                         </div>
-                                        <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                                        <div className="h-1.5 md:h-2 w-full bg-white/5 rounded-full overflow-hidden">
                                             <motion.div
                                                 initial={{ width: 0 }}
                                                 animate={{ width: `${(cat.value / totalSpent) * 100}%` }}
@@ -492,26 +494,26 @@ export default function Analytics({ transactions, currency, cards }) {
                         </motion.div>
 
                         {/* Flux Distribution (Pie Chart) */}
-                        <motion.div variants={item} className="lg:col-span-7 glass-card p-8 flex flex-col md:flex-row items-center gap-8">
+                        <motion.div variants={item} className="lg:col-span-7 glass-card p-4 md:p-8 flex flex-col md:flex-row items-center gap-8">
                             <div className="flex-1">
-                                <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2">Spending Split</h3>
-                                <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest mb-6">Visual category breakdown</p>
+                                <h3 className="text-lg md:text-xl font-black text-white uppercase tracking-tight mb-2">Spending Split</h3>
+                                <p className="text-gray-400 text-[8px] md:text-[10px] font-black uppercase tracking-widest mb-6">Visual breakdown</p>
                                 <div className="grid grid-cols-2 gap-4">
                                     {topCategories.map((cat, i) => (
                                         <div key={i} className="flex items-center gap-2">
-                                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: cat.color }} />
-                                            <span className="text-gray-400 text-[10px] font-black uppercase tracking-widest">{cat.name}</span>
+                                            <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full" style={{ backgroundColor: cat.color }} />
+                                            <span className="text-gray-400 text-[8px] md:text-[10px] font-black uppercase tracking-widest truncate">{cat.name}</span>
                                         </div>
                                     ))}
                                 </div>
                             </div>
-                            <div className="w-48 h-48">
+                            <div className="w-40 h-40 md:w-48 md:h-48">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <PieChart>
                                         <Pie
                                             data={donutData}
-                                            innerRadius={50}
-                                            outerRadius={80}
+                                            innerRadius={45}
+                                            outerRadius={75}
                                             paddingAngle={8}
                                             dataKey="value"
                                             stroke="none"
@@ -522,9 +524,19 @@ export default function Analytics({ transactions, currency, cards }) {
                                             ))}
                                         </Pie>
                                         <Tooltip
-                                            contentStyle={{ backgroundColor: '#050505', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', color: '#fff', fontSize: '10px', fontWeight: '900' }}
-                                            itemStyle={{ color: '#fff' }}
-                                            labelStyle={{ color: 'rgba(255,255,255,0.5)' }}
+                                            contentStyle={{
+                                                backgroundColor: '#0A0A0A',
+                                                border: '1px solid rgba(255,255,255,0.1)',
+                                                borderRadius: '12px',
+                                                color: '#fff',
+                                                fontSize: '10px',
+                                                fontWeight: '900',
+                                                boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+                                                backdropFilter: window.innerWidth > 768 ? 'blur(10px)' : 'none'
+                                            }}
+                                            itemStyle={{ color: '#fff', padding: '0px' }}
+                                            labelStyle={{ color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}
+                                            wrapperStyle={{ zIndex: 100 }}
                                         />
                                     </PieChart>
                                 </ResponsiveContainer>
@@ -544,7 +556,7 @@ export default function Analytics({ transactions, currency, cards }) {
                                 <motion.div
                                     key={report.id}
                                     whileHover={{ scale: 1.02 }}
-                                    className="glass-card p-8 relative overflow-hidden group"
+                                    className="glass-card p-6 md:p-8 relative overflow-hidden group"
                                 >
                                     <div className={`absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity`}>
                                         <Calendar size={80} />
@@ -552,53 +564,54 @@ export default function Analytics({ transactions, currency, cards }) {
 
                                     <div className="flex justify-between items-start mb-6">
                                         <div>
-                                            <h3 className="text-2xl font-black text-white tracking-tighter uppercase">{report.month}</h3>
-                                            <p className="text-neon-green text-[10px] font-black uppercase tracking-[0.2em]">{report.year}</p>
+                                            <h3 className="text-xl md:text-2xl font-black text-white tracking-tighter uppercase">{report.month}</h3>
+                                            <p className="text-neon-green text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em]">{report.year}</p>
                                         </div>
-                                        <div className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest ${report.net >= 0 ? 'bg-neon-green/10 text-neon-green border border-neon-green/20' : 'bg-neon-red/10 text-neon-red border border-neon-red/20'}`}>
+                                        <div className={`px-3 py-1 md:px-4 md:py-2 rounded-xl text-[8px] md:text-[10px] font-black uppercase tracking-widest ${report.net >= 0 ? 'bg-neon-green/10 text-neon-green border border-neon-green/20' : 'bg-neon-red/10 text-neon-red border border-neon-red/20'}`}>
                                             {report.net >= 0 ? 'Surplus' : 'Deficit'}
                                         </div>
                                     </div>
 
                                     <div className="space-y-4 mb-8">
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Income</span>
+                                        <div className="flex justify-between items-center text-[10px] md:text-xs">
+                                            <span className="text-gray-500 font-black uppercase tracking-widest">Income</span>
                                             <span className="text-white font-black">{currency.symbol}{report.income.toLocaleString()}</span>
                                         </div>
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Expenses</span>
+                                        <div className="flex justify-between items-center text-[10px] md:text-xs">
+                                            <span className="text-gray-500 font-black uppercase tracking-widest">Expenses</span>
                                             <span className="text-white font-black">{currency.symbol}{report.expense.toLocaleString()}</span>
                                         </div>
                                         <div className="h-px bg-white/5" />
-                                        <div className="flex justify-between items-center text-lg">
-                                            <span className="text-gray-400 font-black uppercase text-[10px] tracking-widest">Net Savings</span>
+                                        <div className="flex justify-between items-center text-sm md:text-lg">
+                                            <span className="text-gray-400 font-black uppercase text-[8px] md:text-[10px] tracking-widest">Net Savings</span>
                                             <span className={`font-black ${report.net >= 0 ? 'text-neon-green' : 'text-neon-red'}`}>
                                                 {report.net >= 0 ? '+' : ''}{currency.symbol}{report.net.toLocaleString()}
                                             </span>
                                         </div>
                                     </div>
 
-                                    <div className="pt-6 border-t border-white/5 flex items-center justify-between">
+                                    <div className="pt-4 md:pt-6 border-t border-white/5 flex items-center justify-between">
                                         <div>
-                                            <p className="text-gray-600 text-[8px] font-black uppercase tracking-widest">Top Category</p>
-                                            <p className="text-white text-xs font-black uppercase tracking-widest mt-1">{report.topCategory}</p>
+                                            <p className="text-gray-600 text-[6px] md:text-[8px] font-black uppercase tracking-widest">Top Category</p>
+                                            <p className="text-white text-[10px] md:text-xs font-black uppercase tracking-widest mt-1">{report.topCategory}</p>
                                         </div>
-                                        <div className="p-3 bg-white/5 rounded-2xl group-hover:bg-neon-green group-hover:text-black transition-all">
-                                            <ArrowUpRight size={20} />
+                                        <div className="p-2 md:p-3 bg-white/5 rounded-xl md:rounded-2xl group-hover:bg-neon-green group-hover:text-black transition-all">
+                                            <ArrowUpRight size={16} md:size={20} />
                                         </div>
                                     </div>
                                 </motion.div>
                             ))}
 
                             {monthlyReports.length === 0 && (
-                                <div className="col-span-full py-32 text-center glass-card border-dashed border-white/10">
-                                    <p className="text-gray-500 font-black uppercase tracking-widest">No historical data available yet</p>
+                                <div className="col-span-full py-16 md:py-32 text-center glass-card border-dashed border-white/10">
+                                    <p className="text-gray-500 font-black uppercase tracking-widest text-xs">No historical data available yet</p>
                                 </div>
                             )}
                         </div>
                     </motion.div>
-                )}
-            </AnimatePresence>
-        </div>
+                )
+                }
+            </AnimatePresence >
+        </div >
     );
 }

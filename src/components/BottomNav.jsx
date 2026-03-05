@@ -1,23 +1,25 @@
 import { Home, BarChart2, CreditCard, User } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { Link, useLocation } from 'react-router-dom';
 
-export default function BottomNav({ currentView, onViewChange }) {
+export default function BottomNav() {
+    const location = useLocation();
     const navItems = [
-        { id: 'home', icon: Home, label: 'Home' },
-        { id: 'stats', icon: BarChart2, label: 'Stats' },
-        { id: 'cards', icon: CreditCard, label: 'Cards' },
-        { id: 'profile', icon: User, label: 'Profile' },
+        { id: 'home', icon: Home, label: 'Home', path: '/dashboard' },
+        { id: 'stats', icon: BarChart2, label: 'Stats', path: '/analytics' },
+        { id: 'cards', icon: CreditCard, label: 'Cards', path: '/cards' },
+        { id: 'profile', icon: User, label: 'Profile', path: '/profile' },
     ];
 
     return (
         <div className="fixed bottom-6 left-4 right-4 max-w-lg mx-auto md:hidden z-50">
             <div className="glass-card flex justify-around items-center px-4 py-3 shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-white/10">
                 {navItems.map((item) => {
-                    const isActive = currentView === item.id;
+                    const isActive = location.pathname === item.path;
                     return (
-                        <button
+                        <Link
                             key={item.id}
-                            onClick={() => onViewChange(item.id)}
+                            to={item.path}
                             className="relative flex flex-col items-center gap-1 py-1 px-3 min-w-[64px] transition-all duration-300"
                         >
                             <motion.div
@@ -35,7 +37,7 @@ export default function BottomNav({ currentView, onViewChange }) {
                                     className="absolute -bottom-1 w-1 h-1 bg-neon-green rounded-full shadow-neon"
                                 />
                             )}
-                        </button>
+                        </Link>
                     );
                 })}
             </div>

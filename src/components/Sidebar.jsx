@@ -1,13 +1,16 @@
+import { useMemo } from 'react';
 import { Home, BarChart2, CreditCard, User, Wallet, Crown } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { Link, useLocation } from 'react-router-dom';
 
-export default function Sidebar({ currentView, onViewChange, onOpenPremium, isPremium }) {
-    const navItems = [
-        { id: 'home', icon: Home, label: 'Dashboard' },
-        { id: 'stats', icon: BarChart2, label: 'Analytics' },
-        { id: 'cards', icon: CreditCard, label: 'My Cards' },
-        { id: 'profile', icon: User, label: 'Profile' },
-    ];
+export default function Sidebar({ onOpenPremium, isPremium }) {
+    const location = useLocation();
+    const navItems = useMemo(() => [
+        { id: 'home', icon: Home, label: 'Dashboard', path: '/dashboard' },
+        { id: 'stats', icon: BarChart2, label: 'Analytics', path: '/analytics' },
+        { id: 'cards', icon: CreditCard, label: 'My Cards', path: '/cards' },
+        { id: 'profile', icon: User, label: 'Profile', path: '/profile' },
+    ], []);
 
     return (
         <div className="hidden md:flex flex-col w-64 bg-card-dark/80 backdrop-blur-xl border-r border-white/5 min-h-screen p-6 fixed left-0 top-0 z-50">
@@ -26,12 +29,12 @@ export default function Sidebar({ currentView, onViewChange, onOpenPremium, isPr
 
             <nav className="space-y-3 flex-1">
                 {navItems.map((item) => {
-                    const isActive = currentView === item.id;
+                    const isActive = location.pathname === item.path;
                     return (
-                        <button
+                        <Link
                             key={item.id}
-                            onClick={() => onViewChange(item.id)}
-                            className="w-full relative group"
+                            to={item.path}
+                            className="w-full relative group block"
                         >
                             <div className={`flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-500 ${isActive
                                 ? 'text-neon-green'
@@ -49,7 +52,7 @@ export default function Sidebar({ currentView, onViewChange, onOpenPremium, isPr
                                     transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                                 />
                             )}
-                        </button>
+                        </Link>
                     );
                 })}
             </nav>

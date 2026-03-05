@@ -1,19 +1,42 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import { db } from './firebase';
 import { doc, getDoc, onSnapshot, updateDoc, collection, addDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Music, Zap, Utensils, Briefcase, ShoppingBag, Car, Gift, TrendingUp, HelpCircle, Home, Users, Repeat, RefreshCw } from 'lucide-react';
+import { Music, Zap, Utensils, Briefcase, ShoppingBag, Car, Gift, TrendingUp, HelpCircle, Home, Users, Repeat, RefreshCw, Loader2 } from 'lucide-react';
 
-import Dashboard from './components/Dashboard';
+// Lazy load components for performance
+const Dashboard = lazy(() => import('./components/Dashboard'));
+const Analytics = lazy(() => import('./components/Analytics'));
+const Cards = lazy(() => import('./components/Cards'));
+const Profile = lazy(() => import('./components/Profile'));
+
 import BottomNav from './components/BottomNav';
 import Sidebar from './components/Sidebar';
-import Analytics from './components/Analytics';
-import Cards from './components/Cards';
-import Profile from './components/Profile';
 import PremiumModal from './components/PremiumModal';
+import MobileHeader from './components/MobileHeader';
+import NotificationsModal from './components/NotificationsModal';
+import { useNotifications } from './hooks/useNotifications';
+
+// Loading Placeholder
+const ViewLoading = () => (
+  <div className="w-full h-[60vh] flex flex-col items-center justify-center gap-4">
+    <motion.div
+      animate={{
+        scale: [1, 1.2, 1],
+        rotate: [0, 180, 360]
+      }}
+      transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+      className="w-12 h-12 rounded-2xl bg-neon-green/10 flex items-center justify-center border border-neon-green/20"
+    >
+      <Loader2 className="text-neon-green animate-spin" size={24} />
+    </motion.div>
+    <p className="text-gray-500 text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">Syncing Vault...</p>
+  </div>
+);
 
 const getCategoryStyle = (category) => {
   switch (category) {
@@ -39,11 +62,11 @@ const getCategoryStyle = (category) => {
 
 function AuthenticatedApp() {
   const { currentUser } = useAuth();
-  const [currentView, setCurrentView] = useState('home');
+  const location = useLocation();
   const [currency, setCurrency] = useState({ code: 'INR', symbol: '₹' });
   const [transactions, setTransactions] = useState([]);
   const [theme, setTheme] = useState({ id: 'green', name: 'Neon Green', color: '#2ECC71', rgb: '46 204 113' });
-  const [notifications, setNotifications] = useState({ push: true, transactions: true, security: true, reports: false, promotions: false });
+  const [notificationPrefs, setNotificationPrefs] = useState({ push: true, transactions: true, security: true, reports: false, promotions: false });
   const [security, setSecurity] = useState({ appLock: false, biometrics: false, twoFactor: false });
   const [isPremiumModalOpen, setIsPremiumModalOpen] = useState(false);
 
@@ -69,7 +92,7 @@ function AuthenticatedApp() {
         if (data.profile) setUserProfile(prev => ({ ...prev, ...data.profile }));
         if (data.preferences?.currency) setCurrency(data.preferences.currency);
         if (data.preferences?.theme) setTheme(data.preferences.theme);
-        if (data.preferences?.notifications) setNotifications(data.preferences.notifications);
+        if (data.preferences?.notifications) setNotificationPrefs(data.preferences.notifications);
         if (data.security) setSecurity(data.security);
       }
     });
@@ -85,6 +108,15 @@ function AuthenticatedApp() {
 
     return () => { unsubscribeUser(); unsubscribeTx(); };
   }, [currentUser]);
+
+  const {
+    notifications,
+    unreadCount,
+    readIds,
+    markAsRead,
+    markAllRead,
+    clearAll
+  } = useNotifications(currentUser, transactions, [], currency);
 
   useEffect(() => {
     document.documentElement.style.setProperty('--color-neon-primary', theme.rgb);
@@ -163,77 +195,84 @@ function AuthenticatedApp() {
   };
 
   const pageVariants = {
-    initial: { opacity: 0, x: 20 },
-    animate: { opacity: 1, x: 0 },
-    exit: { opacity: 0, x: -20 }
-  };
-
-  const renderView = () => {
-    const views = {
-      home: <Dashboard
-        onNavigate={setCurrentView}
-        transactions={transactions}
-        onAddTransaction={handleAddTransaction}
-        onDeleteTransaction={handleDeleteTransaction}
-        onEditTransaction={handleEditTransaction}
-        currency={currency}
-        user={userProfile}
-        cards={cards}
-        onUpdateProfile={handleUpdateProfile}
-        onOpenPremium={() => setIsPremiumModalOpen(true)}
-      />,
-      stats: <Analytics transactions={transactions} currency={currency} cards={cards} />,
-      cards: <Cards
-        currency={currency}
-        cards={cards}
-        transactions={transactions}
-        onAddCard={handleAddCard}
-        onUpdateCard={handleUpdateCard}
-        onDeleteCard={handleDeleteCard}
-      />,
-      profile: <Profile
-        currency={currency}
-        setCurrency={setCurrency}
-        theme={theme}
-        setTheme={setTheme}
-        notifications={notifications}
-        setNotifications={handleUpdateNotifications}
-        security={security}
-        setSecurity={setSecurity}
-        user={userProfile}
-        setUser={handleUpdateProfile}
-      />
-    };
-
-    return (
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={currentView}
-          variants={pageVariants}
-          initial="initial"
-          animate="animate"
-          exit="exit"
-          transition={{ duration: 0.3, ease: "anticipate" }}
-          className="w-full h-full"
-        >
-          {views[currentView] || views.home}
-        </motion.div>
-      </AnimatePresence>
-    );
+    initial: { opacity: 0, y: 5 },
+    animate: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: -5 }
   };
 
   return (
     <div className="min-h-screen bg-[#050505] text-white flex justify-center font-sans selection:bg-neon-green/30">
       <Sidebar
-        currentView={currentView}
-        onViewChange={setCurrentView}
-        onOpenPremium={() => setIsPremiumModalOpen(true)}
         isPremium={userProfile.isPremium}
+        onOpenPremium={() => setIsPremiumModalOpen(true)}
       />
       <main className="w-full md:pl-64 min-h-screen transition-all duration-300">
-        <div className="w-full max-w-7xl mx-auto relative min-h-screen overflow-x-hidden border-x border-white/5 md:border-none">
-          {renderView()}
-          <BottomNav currentView={currentView} onViewChange={setCurrentView} />
+        <MobileHeader
+          user={userProfile}
+          notifications={notifications}
+          unreadCount={unreadCount}
+          readIds={readIds}
+          markAsRead={markAsRead}
+          markAllRead={markAllRead}
+          clearAll={clearAll}
+        />
+        <div className="w-full max-w-7xl mx-auto relative min-h-screen overflow-x-hidden border-x border-white/5 md:border-none pt-20 md:pt-20 bg-[#050505]">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={location.pathname}
+              variants={pageVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="w-full min-h-screen bg-[#050505]"
+            >
+              <Suspense fallback={<ViewLoading />}>
+                <Routes>
+                  <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                  <Route path="/dashboard" element={
+                    <Dashboard
+                      transactions={transactions}
+                      onAddTransaction={handleAddTransaction}
+                      onDeleteTransaction={handleDeleteTransaction}
+                      onEditTransaction={handleEditTransaction}
+                      currency={currency}
+                      user={userProfile}
+                      cards={cards}
+                      onUpdateProfile={handleUpdateProfile}
+                      onOpenPremium={() => setIsPremiumModalOpen(true)}
+                    />
+                  } />
+                  <Route path="/analytics" element={<Analytics transactions={transactions} currency={currency} cards={cards} />} />
+                  <Route path="/cards" element={
+                    <Cards
+                      currency={currency}
+                      cards={cards}
+                      transactions={transactions}
+                      onAddCard={handleAddCard}
+                      onUpdateCard={handleUpdateCard}
+                      onDeleteCard={handleDeleteCard}
+                    />
+                  } />
+                  <Route path="/profile" element={
+                    <Profile
+                      currency={currency}
+                      setCurrency={setCurrency}
+                      theme={theme}
+                      setTheme={setTheme}
+                      notifications={notifications}
+                      setNotifications={handleUpdateNotifications}
+                      security={security}
+                      setSecurity={setSecurity}
+                      user={userProfile}
+                      setUser={handleUpdateProfile}
+                    />
+                  } />
+                </Routes>
+              </Suspense>
+            </motion.div>
+          </AnimatePresence>
+          <BottomNav />
         </div>
       </main>
 
