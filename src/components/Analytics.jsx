@@ -6,11 +6,20 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, ChevronDown, TrendingUp, TrendingDown, DollarSign, BarChart3, PieChart as PieIcon, Activity, ArrowUpRight, ArrowDownRight, Target, Zap } from 'lucide-react';
 import { CATEGORY_COLORS } from '../utils/constants';
+import CardFilterDropdown from './CardFilterDropdown';
+import { containerVariants, itemVariants } from '../utils/motionConfig';
 
 export default function Analytics({ transactions, currency, cards }) {
     const [view, setView] = useState('charts'); // 'charts' | 'reports'
     const [timeRange, setTimeRange] = useState('Month');
     const [isVisible, setIsVisible] = useState(false);
+    const [selectedCardId, setSelectedCardId] = useState(null); // null = All Cards
+
+    // Filter transactions by selected card
+    const filteredTransactions = useMemo(() => {
+        if (!selectedCardId) return transactions || [];
+        return (transactions || []).filter(tx => tx.cardId === selectedCardId);
+    }, [transactions, selectedCardId]);
 
     // Prioritize interaction: Wait for entrance animation before rendering charts
     useEffect(() => {
@@ -31,7 +40,7 @@ export default function Analytics({ transactions, currency, cards }) {
         const currentDayOfMonth = today.getDate();
         const remainingDaysInMonth = Math.max(daysInCurrentMonth - currentDayOfMonth + 1, 1);
 
-        const currentMonthTransactions = (transactions || []).filter(t => {
+        const currentMonthTransactions = filteredTransactions.filter(t => {
             if (!t.date) return false;
             const txDate = new Date(t.date);
             return txDate >= startOfCurrentMonth && txDate <= endOfCurrentMonth;
@@ -46,8 +55,14 @@ export default function Analytics({ transactions, currency, cards }) {
             .reduce((acc, tx) => acc + parseAmount(tx.amount), 0);
 
         const unfrozenCards = (cards || []).filter(c => !c.frozen && !c.status?.includes('frozen'));
-        const totalCardLimit = unfrozenCards.reduce((sum, card) => sum + (parseFloat(card.limit) || 0), 0);
-        const budgetLimit = totalCardLimit > 0 ? totalCardLimit : (cmIncome > 0 ? cmIncome * 0.8 : 50000);
+        let budgetLimit;
+        if (selectedCardId) {
+            const sc = (cards || []).find(c => c.id === selectedCardId);
+            budgetLimit = parseFloat(sc?.limit) || (cmIncome > 0 ? cmIncome * 0.8 : 50000);
+        } else {
+            const totalCardLimit = unfrozenCards.reduce((sum, card) => sum + (parseFloat(card.limit) || 0), 0);
+            budgetLimit = totalCardLimit > 0 ? totalCardLimit : (cmIncome > 0 ? cmIncome * 0.8 : 50000);
+        }
 
         return {
             allowance: Math.max((budgetLimit - cmSpent) / remainingDaysInMonth, 0),
@@ -56,7 +71,7 @@ export default function Analytics({ transactions, currency, cards }) {
             cmIncome,
             cmSpent
         };
-    }, [transactions, cards, currency]);
+    }, [filteredTransactions, cards, selectedCardId]);
 
     const periodData = useMemo(() => {
         const today = new Date();
@@ -84,7 +99,7 @@ export default function Analytics({ transactions, currency, cards }) {
             label = 'Monthly';
         }
 
-        const periodTransactions = (transactions || []).filter(t => {
+        const periodTransactions = filteredTransactions.filter(t => {
             if (timeRange === 'Overall') return true;
             if (!t.date) return false;
             const txDate = new Date(t.date);
@@ -113,7 +128,7 @@ export default function Analytics({ transactions, currency, cards }) {
             chartData.sort((a, b) => sorter[a.label] - sorter[b.label]);
         } else if (timeRange === 'Overall') {
             const monthMap = {};
-            (transactions || []).forEach(tx => {
+            filteredTransactions.forEach(tx => {
                 if (!tx?.date || !tx?.amount?.startsWith('-')) return;
                 const d = new Date(tx.date);
                 const mName = monthNames[d.getMonth()];
@@ -172,12 +187,12 @@ export default function Analytics({ transactions, currency, cards }) {
             trendData,
             periodLabel: label
         };
-    }, [transactions, timeRange, currency]);
+    }, [filteredTransactions, timeRange]);
 
     const reports = useMemo(() => {
         const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         const reportsMap = {};
-        (transactions || []).forEach(tx => {
+        filteredTransactions.forEach(tx => {
             if (!tx.date) return;
             const d = new Date(tx.date);
             const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -197,7 +212,7 @@ export default function Analytics({ transactions, currency, cards }) {
             const topCat = Object.entries(data.categories).sort((a, b) => b[1] - a[1])[0];
             return { id: key, ...data, net: data.income - data.expense, topCategory: topCat ? topCat[0] : 'N/A' };
         });
-    }, [transactions, currency]);
+    }, [filteredTransactions]);
 
     // Cleanup legacy destructuring
     const { chartData, totalSpent, totalIncome, savingsRate, catData, trendData, periodLabel } = periodData;
@@ -207,15 +222,9 @@ export default function Analytics({ transactions, currency, cards }) {
     const donutData = catData;
     const monthlyReports = reports;
 
-    const container = useMemo(() => ({
-        hidden: { opacity: 0 },
-        show: { opacity: 1, transition: { staggerChildren: 0.03 } }
-    }), []);
-
-    const item = useMemo(() => ({
-        hidden: { opacity: 0, y: 10 },
-        show: { opacity: 1, y: 0 }
-    }), []);
+    // Use shared motionConfig variants
+    const container = containerVariants;
+    const item = itemVariants;
 
     return (
         <div className="pt-4 md:pt-8 px-4 md:px-6 pb-32 md:pb-12 max-w-7xl mx-auto min-h-screen">
@@ -224,12 +233,19 @@ export default function Analytics({ transactions, currency, cards }) {
                 <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
                     <h1 className="text-xl md:text-3xl font-black tracking-tight text-white uppercase flex items-center gap-3">
                         <BarChart3 className="text-neon-green" size={24} />
-                        Analytics
+                        Stats
                     </h1>
-                    <p className="text-gray-400 text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] mt-1">Deep Financial Insights</p>
+                    <p className="text-gray-400 text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] mt-1">Spending Insights</p>
                 </motion.div>
 
-                <div className="w-full md:w-auto flex items-center justify-between md:justify-end gap-4">
+                <div className="w-full md:w-auto flex flex-nowrap items-center gap-2 overflow-x-auto pb-0.5 no-scrollbar md:justify-end">
+                    {/* Card Filter Dropdown */}
+                    <CardFilterDropdown
+                        cards={cards}
+                        selectedCardId={selectedCardId}
+                        onSelect={setSelectedCardId}
+                    />
+
                     {/* View Toggle */}
                     <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
                         {['charts', 'reports'].map((v) => (
@@ -276,7 +292,7 @@ export default function Analytics({ transactions, currency, cards }) {
                             <div className="relative z-10">
                                 <div className="flex justify-between items-start mb-6">
                                     <div>
-                                        <p className="text-gray-500 text-[10px] md:text-xs font-black uppercase tracking-widest leading-tight mb-2">Portfolio Velocity</p>
+                                        <p className="text-gray-400 text-[10px] md:text-xs font-black uppercase tracking-widest leading-tight mb-2">Growth Rate</p>
                                         <h2 className="text-white text-xl md:text-2xl font-black uppercase tracking-tight">Savings Rate</h2>
                                     </div>
                                     <div className="p-3 bg-neon-green/10 rounded-2xl text-neon-green shadow-neon/20">
@@ -291,7 +307,7 @@ export default function Analytics({ transactions, currency, cards }) {
 
                             <div className="relative z-10 w-full">
                                 <div className="flex justify-between text-[10px] font-black uppercase tracking-widest mb-3">
-                                    <span className="text-gray-500">Efficiency Index</span>
+                                    <span className="text-gray-500">Savings Score</span>
                                     <span className="text-neon-green">{savingsRate}% optimized</span>
                                 </div>
                                 <div className="h-3 w-full bg-white/5 rounded-full overflow-hidden border border-white/5 p-[2px]">
@@ -346,7 +362,7 @@ export default function Analytics({ transactions, currency, cards }) {
                             <div className="flex justify-between items-start mb-4">
                                 <div>
                                     <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Safe Daily Spend</p>
-                                    <p className="text-brand-blue text-[8px] font-black uppercase tracking-widest opacity-60">Liquidity Index</p>
+                                    <p className="text-brand-blue text-[8px] font-black uppercase tracking-widest opacity-60">Daily Limit</p>
                                 </div>
                                 <div className="p-3 bg-brand-blue/20 rounded-2xl text-brand-blue shadow-lg shadow-brand-blue/10">
                                     <Zap size={20} />
@@ -364,7 +380,7 @@ export default function Analytics({ transactions, currency, cards }) {
                             <div className="hidden md:block absolute -top-10 -right-10 w-40 h-40 bg-neon-red/10 blur-[80px] rounded-full group-hover:bg-neon-red/20 transition-all duration-700" />
                             <div className="flex justify-between items-start mb-4 relative z-10">
                                 <div>
-                                    <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">{periodLabel} Projection</span>
+                                    <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">{periodLabel} Planned Spend</span>
                                     <p className="text-neon-red text-[8px] font-black uppercase tracking-widest mt-1">Forecast Variance</p>
                                 </div>
                                 <div className="p-3 bg-neon-red/10 text-neon-red rounded-2xl shadow-lg shadow-neon-red/10">
@@ -376,7 +392,7 @@ export default function Analytics({ transactions, currency, cards }) {
                                     <h3 className="text-4xl md:text-5xl font-black text-white tracking-tighter">{currency.symbol}{Math.round(projectedSpend).toLocaleString()}</h3>
                                     <span className="text-neon-red text-[10px] font-black uppercase tracking-widest">Expected</span>
                                 </div>
-                                <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Anticipated total burn by period end</p>
+                                <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Estimated total spend by period end</p>
                             </div>
                         </motion.div>
 

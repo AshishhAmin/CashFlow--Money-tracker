@@ -1,13 +1,16 @@
 import { CreditCard, Snowflake, Settings, Plus, Wifi, Copy, Trash2, Shield, Globe, Zap, ArrowUpRight } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { containerVariants, itemVariants } from '../utils/motionConfig';
 import AddCardModal from './AddCardModal';
 import CardSettingsModal from './CardSettingsModal';
+import ConfirmDialog from './ConfirmDialog';
 
 export default function Cards({ currency, cards, transactions, onAddCard, onUpdateCard, onDeleteCard }) {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [editingCard, setEditingCard] = useState(null);
     const [spendingView, setSpendingView] = useState('monthly'); // 'monthly' | 'overall'
+    const [confirmDelete, setConfirmDelete] = useState({ isOpen: false, cardId: null, cardData: null });
 
     const toggleFreeze = (id) => {
         const card = cards.find(c => c.id === id);
@@ -26,21 +29,9 @@ export default function Cards({ currency, cards, transactions, onAddCard, onUpda
         }
     };
 
-    const container = useMemo(() => ({
-        hidden: { opacity: 0 },
-        show: {
-            opacity: 1,
-            transition: {
-                staggerChildren: 0.03, // Faster stagger
-                delayChildren: 0.1
-            }
-        }
-    }), []);
-
-    const item = useMemo(() => ({
-        hidden: { opacity: 0, y: 10 }, // Reduced movement
-        show: { opacity: 1, y: 0 }
-    }), []);
+    // Use shared motionConfig variants
+    const container = containerVariants;
+    const item = itemVariants;
 
     return (
         <div className="pt-4 md:pt-8 px-4 md:px-6 pb-32 md:pb-12 max-w-7xl mx-auto min-h-screen">
@@ -49,6 +40,7 @@ export default function Cards({ currency, cards, transactions, onAddCard, onUpda
                 onClose={() => setIsAddModalOpen(false)}
                 onAdd={onAddCard}
                 currency={currency}
+                existingCards={cards}
             />
 
             <CardSettingsModal
@@ -57,6 +49,19 @@ export default function Cards({ currency, cards, transactions, onAddCard, onUpda
                 card={editingCard}
                 onUpdate={onUpdateCard}
                 currency={currency}
+            />
+
+            <ConfirmDialog
+                isOpen={confirmDelete.isOpen}
+                onClose={() => setConfirmDelete({ isOpen: false, cardId: null, cardData: null })}
+                onConfirm={() => {
+                    if (confirmDelete.cardId) {
+                        onDeleteCard(confirmDelete.cardId);
+                    }
+                }}
+                title="Delete Card?"
+                message={`Are you sure you want to delete "${confirmDelete.cardData?.name || 'this card'}"? All associated transaction data will be lost.`}
+                confirmText="Delete Now"
             />
 
             {/* Header */}
@@ -156,7 +161,7 @@ export default function Cards({ currency, cards, transactions, onAddCard, onUpda
                                     <span className="text-[7px] md:text-[10px] font-black uppercase tracking-widest">Edit</span>
                                 </button>
                                 <button
-                                    onClick={() => onDeleteCard(card.id)}
+                                    onClick={() => setConfirmDelete({ isOpen: true, cardId: card.id, cardData: card })}
                                     className="glass p-2.5 rounded-xl flex flex-col items-center gap-1 text-gray-500 hover:text-neon-red border-white/5 hover:bg-neon-red/10 transition-all"
                                 >
                                     <Trash2 size={14} />

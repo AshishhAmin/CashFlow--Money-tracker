@@ -7,6 +7,8 @@ import { db } from './firebase';
 import { doc, getDoc, onSnapshot, updateDoc, collection, addDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Music, Zap, Utensils, Briefcase, ShoppingBag, Car, Gift, TrendingUp, HelpCircle, Home, Users, Repeat, RefreshCw, Loader2 } from 'lucide-react';
+import SplashScreen from './components/SplashScreen';
+import { pageVariants as PV } from './utils/motionConfig';
 
 // Lazy load components for performance
 const Dashboard = lazy(() => import('./components/Dashboard'));
@@ -19,22 +21,14 @@ import Sidebar from './components/Sidebar';
 import PremiumModal from './components/PremiumModal';
 import MobileHeader from './components/MobileHeader';
 import NotificationsModal from './components/NotificationsModal';
+import OnboardingModal from './components/OnboardingModal';
 import { useNotifications } from './hooks/useNotifications';
 
-// Loading Placeholder
+// Loading Placeholder — lightweight, no scale animation
 const ViewLoading = () => (
   <div className="w-full h-[60vh] flex flex-col items-center justify-center gap-4">
-    <motion.div
-      animate={{
-        scale: [1, 1.2, 1],
-        rotate: [0, 180, 360]
-      }}
-      transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-      className="w-12 h-12 rounded-2xl bg-neon-green/10 flex items-center justify-center border border-neon-green/20"
-    >
-      <Loader2 className="text-neon-green animate-spin" size={24} />
-    </motion.div>
-    <p className="text-gray-500 text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">Syncing Vault...</p>
+    <Loader2 className="text-neon-green animate-spin" size={28} />
+    <p className="text-gray-500 text-[10px] font-black uppercase tracking-[0.3em]">Loading...</p>
   </div>
 );
 
@@ -69,6 +63,7 @@ function AuthenticatedApp() {
   const [notificationPrefs, setNotificationPrefs] = useState({ push: true, transactions: true, security: true, reports: false, promotions: false });
   const [security, setSecurity] = useState({ appLock: false, biometrics: false, twoFactor: false });
   const [isPremiumModalOpen, setIsPremiumModalOpen] = useState(false);
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
 
   const [userProfile, setUserProfile] = useState({
     uid: currentUser?.uid || '',
@@ -171,14 +166,34 @@ function AuthenticatedApp() {
   };
 
   const [cards, setCards] = useState([]);
+  const [isCardsLoaded, setIsCardsLoaded] = useState(false);
   useEffect(() => {
     if (!currentUser) return;
     const cardsRef = collection(db, "users", currentUser.uid, "cards");
     const unsubscribeCards = onSnapshot(cardsRef, (snapshot) => {
       setCards(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setIsCardsLoaded(true);
     });
     return () => unsubscribeCards();
   }, [currentUser]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    // Show onboarding if data is loaded AND no cards exist AND user hasn't seen it
+    const onboardingKey = `hasSeenOnboarding_${currentUser.uid}`;
+    const hasSeenOnboarding = localStorage.getItem(onboardingKey);
+    if (isCardsLoaded && cards && cards.length === 0 && !hasSeenOnboarding) {
+      setIsOnboardingOpen(true);
+    }
+  }, [isCardsLoaded, cards, currentUser]);
+
+  const handleCloseOnboarding = () => {
+    setIsOnboardingOpen(false);
+    if (currentUser) {
+      const onboardingKey = `hasSeenOnboarding_${currentUser.uid}`;
+      localStorage.setItem(onboardingKey, 'true');
+    }
+  };
 
   const handleAddCard = async (newCard) => {
     await addDoc(collection(db, "users", currentUser.uid, "cards"), {
@@ -194,10 +209,11 @@ function AuthenticatedApp() {
     await deleteDoc(doc(db, "users", currentUser.uid, "cards", cardId));
   };
 
+  // Lightweight page transition using shared motionConfig
   const pageVariants = {
-    initial: { opacity: 0, y: 5 },
-    animate: { opacity: 1, y: 0 },
-    exit: { opacity: 0, y: -5 }
+    initial: PV.initial,
+    animate: PV.animate,
+    exit: PV.exit,
   };
 
   return (
@@ -224,7 +240,7 @@ function AuthenticatedApp() {
               initial="initial"
               animate="animate"
               exit="exit"
-              transition={{ duration: 0.2, ease: "easeOut" }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
               className="w-full min-h-screen bg-[#050505]"
             >
               <Suspense fallback={<ViewLoading />}>
@@ -239,6 +255,7 @@ function AuthenticatedApp() {
                       currency={currency}
                       user={userProfile}
                       cards={cards}
+                      isCardsLoaded={isCardsLoaded}
                       onUpdateProfile={handleUpdateProfile}
                       onOpenPremium={() => setIsPremiumModalOpen(true)}
                     />
@@ -266,8 +283,10 @@ function AuthenticatedApp() {
                       setSecurity={setSecurity}
                       user={userProfile}
                       setUser={handleUpdateProfile}
+                      onShowOnboarding={() => setIsOnboardingOpen(true)}
                     />
                   } />
+                  <Route path="*" element={<Navigate to="/dashboard" replace />} />
                 </Routes>
               </Suspense>
             </motion.div>
@@ -275,6 +294,11 @@ function AuthenticatedApp() {
           <BottomNav />
         </div>
       </main>
+
+      <OnboardingModal
+        isOpen={isOnboardingOpen}
+        onClose={handleCloseOnboarding}
+      />
 
       <PremiumModal
         isOpen={isPremiumModalOpen}
@@ -287,9 +311,21 @@ function AuthenticatedApp() {
 
 function App() {
   const [authView, setAuthView] = useState('login');
+  const [showSplash, setShowSplash] = useState(
+    !sessionStorage.getItem('splashShown')
+  );
+
+  const handleSplashComplete = () => {
+    sessionStorage.setItem('splashShown', '1');
+    setShowSplash(false);
+  };
+
   return (
     <AuthProvider>
-      <AuthWrapper authView={authView} setAuthView={setAuthView} />
+      <AnimatePresence>
+        {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
+      </AnimatePresence>
+      {!showSplash && <AuthWrapper authView={authView} setAuthView={setAuthView} />}
     </AuthProvider>
   );
 }

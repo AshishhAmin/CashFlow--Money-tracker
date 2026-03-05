@@ -52,7 +52,7 @@ export function useNotifications(user, transactions = [], cards = [], currency =
         const notifs = [];
 
         // Budget Logic
-        const unfrozenCards = cards.filter(c => !c.frozen && !c.status?.includes('frozen'));
+        const unfrozenCards = (cards || []).filter(c => !c.frozen && !c.status?.includes('frozen'));
         const totalLimit = unfrozenCards.reduce((sum, card) => sum + (parseFloat(card.limit) || 0), 0);
         const budgetLimit = totalLimit > 0 ? totalLimit : 50000;
 
@@ -110,7 +110,7 @@ export function useNotifications(user, transactions = [], cards = [], currency =
         });
 
         // Cards Frozen
-        cards.filter(c => c.frozen || c.status?.includes('frozen')).forEach(card => {
+        (cards || []).filter(c => c.frozen || c.status?.includes('frozen')).forEach(card => {
             notifs.push({
                 id: `card-frozen-${card.id}`,
                 type: 'alert',

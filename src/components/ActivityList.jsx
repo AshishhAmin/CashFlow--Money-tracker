@@ -3,6 +3,7 @@ import { Music, Zap, Utensils, Briefcase, Calendar, X, Pencil, Trash2, ShoppingB
 import { motion, AnimatePresence } from 'framer-motion';
 import { getRelativeTime } from '../utils/dateUtils';
 import CalendarFilter from './CalendarFilter';
+import ConfirmDialog from './ConfirmDialog';
 
 const categories = ['All', 'Food', 'Entertainment', 'Transport', 'Shopping', 'Bills', 'Essentials', 'Health', 'Work', 'Freelance', 'Gift', 'Investments', 'Other'];
 
@@ -11,6 +12,7 @@ export default function ActivityList({ transactions, onDelete, onEdit }) {
     const [dateFilter, setDateFilter] = useState(new Date().toISOString().split('T')[0]);
     const [showCalendar, setShowCalendar] = useState(false);
     const [showAll, setShowAll] = useState(false);
+    const [confirmDelete, setConfirmDelete] = useState({ isOpen: false, txId: null, txData: null });
     const [, setTick] = useState(0);
 
     useEffect(() => {
@@ -146,7 +148,7 @@ export default function ActivityList({ transactions, onDelete, onEdit }) {
                                     <button
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            if (confirm('Delete this transaction?')) onDelete(tx.id, tx);
+                                            setConfirmDelete({ isOpen: true, txId: tx.id, txData: tx });
                                         }}
                                         className="p-2.5 glass text-neon-red/80 hover:text-neon-red rounded-xl hover:bg-neon-red/10 transition-all"
                                     >
@@ -166,6 +168,19 @@ export default function ActivityList({ transactions, onDelete, onEdit }) {
                     )}
                 </AnimatePresence>
             </div>
+
+            <ConfirmDialog
+                isOpen={confirmDelete.isOpen}
+                onClose={() => setConfirmDelete({ isOpen: false, txId: null, txData: null })}
+                onConfirm={() => {
+                    if (confirmDelete.txId) {
+                        onDelete(confirmDelete.txId, confirmDelete.txData);
+                    }
+                }}
+                title="Delete Activity?"
+                message={`Are you sure you want to delete "${confirmDelete.txData?.title || 'this transaction'}"? This will permanently remove it from your history.`}
+                confirmText="Delete Now"
+            />
         </div>
     );
 }

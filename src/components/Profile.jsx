@@ -1,7 +1,8 @@
-import { User, Settings, Shield, Bell, HelpCircle, LogOut, ChevronRight, Moon, Globe, CreditCard, Zap, Crown, Mail, Fingerprint, Trash2, Smartphone } from 'lucide-react';
+import { User, Settings, Shield, Bell, HelpCircle, LogOut, ChevronRight, Moon, Globe, CreditCard, Zap, Crown, Mail, Fingerprint, Trash2, Smartphone, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { containerVariants, itemVariants, modalVariants } from '../utils/motionConfig';
 import EditProfileModal from './EditProfileModal';
 import CurrencySelectionModal from './CurrencySelectionModal';
 import AppearanceModal from './AppearanceModal';
@@ -9,7 +10,7 @@ import NotificationSettingsModal from './NotificationSettingsModal';
 import SecuritySettingsModal from './SecuritySettingsModal';
 import HelpSupportModal from './HelpSupportModal';
 
-export default function Profile({ currency, setCurrency, theme, setTheme, notifications, setNotifications, security, setSecurity, user, setUser }) {
+export default function Profile({ currency, setCurrency, theme, setTheme, notifications, setNotifications, security, setSecurity, user, setUser, onShowOnboarding }) {
     const auth = useAuth();
     const logout = auth?.logout;
     const deleteAccount = auth?.deleteAccount;
@@ -53,15 +54,8 @@ export default function Profile({ currency, setCurrency, theme, setTheme, notifi
         }
     };
 
-    const container = {
-        hidden: { opacity: 0 },
-        show: { opacity: 1, transition: { staggerChildren: 0.05 } }
-    };
-
-    const itemNode = {
-        hidden: { opacity: 0, y: 10 },
-        show: { opacity: 1, y: 0 }
-    };
+    const container = containerVariants;
+    const itemNode = itemVariants;
 
     return (
         <div className="pt-4 md:pt-8 px-4 md:px-6 pb-32 md:pb-12 max-w-5xl mx-auto min-h-screen">
@@ -70,9 +64,10 @@ export default function Profile({ currency, setCurrency, theme, setTheme, notifi
                 {isLogoutConfirmOpen && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 backdrop-blur-md bg-black/40">
                         <motion.div
-                            initial={{ scale: 0.9, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.9, opacity: 0 }}
+                            initial={modalVariants.initial}
+                            animate={modalVariants.animate}
+                            exit={modalVariants.exit}
+                            transition={modalVariants.animate?.transition || { duration: 0.15 }}
                             className="glass-card w-full max-w-sm p-8 border-white/10 shadow-[0_50px_100px_rgba(0,0,0,0.5)]"
                         >
                             <h3 className="text-2xl font-black text-white mb-2 uppercase tracking-tight">Log Out?</h3>
@@ -80,6 +75,24 @@ export default function Profile({ currency, setCurrency, theme, setTheme, notifi
                             <div className="flex gap-3">
                                 <button onClick={() => setIsLogoutConfirmOpen(false)} className="flex-1 py-4 glass text-gray-400 rounded-2xl font-black uppercase tracking-widest hover:text-white transition-all">Cancel</button>
                                 <button onClick={handleLogout} className="flex-1 py-4 bg-white text-black rounded-2xl font-black uppercase tracking-widest shadow-xl hover:bg-gray-200 transition-all">Log Out</button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+                {isDeleteConfirmOpen && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 backdrop-blur-md bg-black/40">
+                        <motion.div
+                            initial={modalVariants.initial}
+                            animate={modalVariants.animate}
+                            exit={modalVariants.exit}
+                            transition={modalVariants.animate?.transition || { duration: 0.15 }}
+                            className="glass-card w-full max-w-md p-8 border-neon-red/20 shadow-[0_50px_100px_rgba(255,0,0,0.2)]"
+                        >
+                            <h3 className="text-2xl font-black text-neon-red mb-2 uppercase tracking-tight">Erase Account?</h3>
+                            <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest mb-8">This action is permanent. All your financial data, transactions, and cards will be destroyed across all devices.</p>
+                            <div className="flex gap-3">
+                                <button onClick={() => setIsDeleteConfirmOpen(false)} className="flex-1 py-4 glass text-gray-400 rounded-2xl font-black uppercase tracking-widest hover:text-white transition-all">Abort</button>
+                                <button onClick={handleDeleteAccount} className="flex-1 py-4 bg-neon-red text-white rounded-2xl font-black uppercase tracking-widest shadow-xl hover:bg-neon-red/80 transition-all">Confirm Deletion</button>
                             </div>
                         </motion.div>
                     </div>
@@ -216,6 +229,18 @@ export default function Profile({ currency, setCurrency, theme, setTheme, notifi
                                 <div className="text-left">
                                     <p className="text-gray-400 text-[8px] md:text-[10px] font-black uppercase tracking-widest">Help & Support</p>
                                     <p className="text-white text-xs md:text-sm font-black mt-1 uppercase tracking-tight">Documentation</p>
+                                </div>
+                            </div>
+                            <ChevronRight size={16} className="text-gray-700 group-hover:text-white transition-all group-hover:translate-x-1" />
+                        </button>
+                        <button onClick={onShowOnboarding} className="w-full flex items-center justify-between p-4 md:p-6 hover:bg-white/5 transition-all group">
+                            <div className="flex items-center gap-4 md:gap-6">
+                                <div className="p-2.5 md:p-3 rounded-xl md:rounded-2xl bg-brand-blue/10 text-brand-blue">
+                                    <Sparkles size={18} />
+                                </div>
+                                <div className="text-left">
+                                    <p className="text-gray-400 text-[8px] md:text-[10px] font-black uppercase tracking-widest">Guide</p>
+                                    <p className="text-white text-xs md:text-sm font-black mt-1 uppercase tracking-tight">How to Use</p>
                                 </div>
                             </div>
                             <ChevronRight size={16} className="text-gray-700 group-hover:text-white transition-all group-hover:translate-x-1" />

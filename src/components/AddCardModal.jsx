@@ -9,18 +9,21 @@ const cardThemes = [
     { name: 'Ocean Depth', bg: 'bg-gradient-to-br from-blue-600/80 via-blue-900/60 to-black' }
 ];
 
-export default function AddCardModal({ isOpen, onClose, onAdd, currency }) {
+export default function AddCardModal({ isOpen, onClose, onAdd, currency, existingCards = [] }) {
     const [cardHolder, setCardHolder] = useState('');
     const [cardNumber, setCardNumber] = useState('');
     const [expiry, setExpiry] = useState('');
     const [limit, setLimit] = useState(50000);
     const [selectedTheme, setSelectedTheme] = useState(cardThemes[0]);
+    const [cardNumberError, setCardNumberError] = useState('');
 
     const handleCardNumberChange = (e) => {
         let val = e.target.value.replace(/\D/g, '');
         if (val.length > 16) val = val.slice(0, 16);
         const formatted = val.match(/.{1,4}/g)?.join(' ') || val;
         setCardNumber(formatted);
+        // Clear error on change
+        if (cardNumberError) setCardNumberError('');
     };
 
     const handleExpiryChange = (e) => {
@@ -32,6 +35,13 @@ export default function AddCardModal({ isOpen, onClose, onAdd, currency }) {
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        // Uniqueness check
+        const rawNew = cardNumber.replace(/\s/g, '');
+        const isDuplicate = existingCards.some(c => c.number?.replace(/\s/g, '') === rawNew);
+        if (isDuplicate) {
+            setCardNumberError('This card number is already in use.');
+            return;
+        }
         onAdd({
             holder: cardHolder.toUpperCase(),
             number: cardNumber,
@@ -48,6 +58,7 @@ export default function AddCardModal({ isOpen, onClose, onAdd, currency }) {
         setExpiry('');
         setLimit(50000);
         setSelectedTheme(cardThemes[0]);
+        setCardNumberError('');
     };
 
     if (!isOpen) return null;
@@ -118,10 +129,11 @@ export default function AddCardModal({ isOpen, onClose, onAdd, currency }) {
                                 placeholder="0000 0000 0000 0000"
                                 value={cardNumber}
                                 onChange={handleCardNumberChange}
-                                className="w-full bg-[#0a0a0a] border border-gray-800 rounded-xl px-4 py-3 text-white font-mono focus:outline-none focus:border-neon-green focus:ring-1 focus:ring-neon-green transition-all"
+                                className={`w-full bg-[#0a0a0a] border ${cardNumberError ? 'border-neon-red' : 'border-gray-800'} rounded-xl px-4 py-3 text-white font-mono focus:outline-none focus:border-neon-green focus:ring-1 focus:ring-neon-green transition-all`}
                                 maxLength={19}
                                 required
                             />
+                            {cardNumberError && <p className="text-neon-red text-[10px] font-bold mt-1.5 uppercase tracking-wide">{cardNumberError}</p>}
                         </div>
                         <div>
                             <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wider">Expiry Date</label>

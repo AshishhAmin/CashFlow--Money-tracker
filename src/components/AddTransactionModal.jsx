@@ -1,4 +1,4 @@
-import { X, Calendar as CalendarIcon, Hash, Tag, CreditCard as CardIcon, Edit3, Zap, ArrowDown, ArrowUp } from 'lucide-react';
+import { X, Calendar as CalendarIcon, Zap, ArrowDown, ArrowUp } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CalendarFilter from './CalendarFilter';
@@ -24,9 +24,7 @@ export default function AddTransactionModal({ isOpen, onClose, onAdd, type = 'ex
                 try {
                     const d = new Date(initialData.date);
                     if (!isNaN(d.getTime())) setDate(d.toISOString().split('T')[0]);
-                } catch (e) {
-                    console.error("Invalid date", e);
-                }
+                } catch (e) { console.error("Invalid date", e); }
             } else {
                 setCategory(type === 'expense' ? 'Food' : 'Work');
                 setTitle('');
@@ -38,175 +36,135 @@ export default function AddTransactionModal({ isOpen, onClose, onAdd, type = 'ex
     }, [isOpen, type, cards, initialData]);
 
     const isExpense = type === 'expense';
-    const themeColor = isExpense ? 'neon-red' : 'neon-green';
     const categories = isExpense ? expenseCategories : incomeCategories;
 
     const handleSubmit = (e) => {
         e.preventDefault();
         if (!title || !amount) return;
-        onAdd({
-            title,
-            amount: parseFloat(amount),
-            category,
-            type,
-            date,
-            cardId: selectedCardId
-        });
+        onAdd({ title, amount: parseFloat(amount), category, type, date, cardId: selectedCardId });
         onClose();
     };
 
     return (
         <AnimatePresence>
             {isOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto">
+                <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4">
                     {/* Backdrop */}
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-black/80 backdrop-blur-md"
-                        onClick={onClose}
-                    />
+                    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
 
-                    {/* Modal Content */}
+                    {/* Bottom-sheet on mobile, centered on sm+ */}
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                        className="relative glass-card w-full max-w-md p-8 border-white/10 shadow-[0_50px_100px_rgba(0,0,0,0.5)] z-20"
+                        initial={{ opacity: 0, y: 40 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 30 }}
+                        transition={{ duration: 0.18, ease: 'easeOut' }}
+                        className="relative glass-card w-full sm:max-w-md p-4 sm:p-6 border-t border-white/10 sm:border sm:border-white/10 shadow-[0_-20px_60px_rgba(0,0,0,0.6)] sm:shadow-[0_50px_100px_rgba(0,0,0,0.5)] z-20 rounded-t-3xl sm:rounded-3xl"
                     >
-                        <div className="flex justify-between items-start mb-8">
-                            <div>
-                                <h2 className="text-2xl font-black text-white uppercase tracking-tight flex items-center gap-3">
-                                    <div className={`p-2 rounded-xl ${isExpense ? 'bg-neon-red/10 text-neon-red' : 'bg-neon-green/10 text-neon-green'}`}>
-                                        {isExpense ? <ArrowDown size={20} /> : <ArrowUp size={20} />}
-                                    </div>
-                                    {initialData ? 'Update' : 'Add'} {isExpense ? 'Expense' : 'Income'}
-                                </h2>
-                                <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest mt-1">Enter transaction details</p>
-                            </div>
-                            <button onClick={onClose} className="p-2 glass border-white/5 hover:bg-white/10 rounded-xl transition-all text-gray-400 hover:text-white">
-                                <X size={20} />
+                        {/* Drag pill */}
+                        <div className="w-8 h-1 bg-white/20 rounded-full mx-auto mb-3 sm:hidden" />
+
+                        {/* Header */}
+                        <div className="flex justify-between items-center mb-3">
+                            <h2 className="text-sm font-black text-white uppercase tracking-tight flex items-center gap-2">
+                                <div className={`p-1.5 rounded-lg ${isExpense ? 'bg-neon-red/10 text-neon-red' : 'bg-neon-green/10 text-neon-green'}`}>
+                                    {isExpense ? <ArrowDown size={14} /> : <ArrowUp size={14} />}
+                                </div>
+                                {initialData ? 'Update' : 'Add'} {isExpense ? 'Expense' : 'Income'}
+                            </h2>
+                            <button onClick={onClose} className="p-1.5 hover:bg-white/10 rounded-lg transition-all text-gray-400 hover:text-white">
+                                <X size={16} />
                             </button>
                         </div>
 
-                        <form onSubmit={handleSubmit} className="space-y-6">
-                            {/* Title Input */}
-                            <div className="space-y-2">
-                                <label className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">
-                                    <Edit3 size={12} /> Description
-                                </label>
+                        <form onSubmit={handleSubmit} className="space-y-2.5">
+                            {/* Amount — large and prominent */}
+                            <div className="relative">
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white font-black opacity-30 text-lg">{currency?.symbol || '₹'}</span>
                                 <input
-                                    type="text"
-                                    placeholder={isExpense ? "What did you spend on?" : "Source of income"}
-                                    value={title}
-                                    onChange={(e) => setTitle(e.target.value)}
-                                    className="w-full glass bg-white/5 border-white/5 rounded-2xl px-5 py-4 text-white font-black tracking-tight focus:outline-none focus:bg-white/10 focus:border-white/20 transition-all placeholder:text-gray-700"
+                                    type="number"
+                                    inputMode="decimal"
+                                    placeholder="0.00"
+                                    step="0.01"
+                                    value={amount}
+                                    onChange={(e) => setAmount(e.target.value)}
+                                    className="w-full bg-white/5 rounded-xl pl-10 pr-4 py-3 text-2xl font-black tracking-tighter text-white focus:outline-none focus:bg-white/10 transition-all placeholder:text-gray-800 border border-white/5"
                                     autoFocus
                                 />
                             </div>
 
-                            {/* Amount Input */}
-                            <div className="space-y-2">
-                                <label className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">
-                                    <Hash size={12} /> Amount
-                                </label>
-                                <div className="relative">
-                                    <span className="absolute left-5 top-1/2 -translate-y-1/2 text-white font-black opacity-30 text-xl">{currency?.symbol || '₹'}</span>
-                                    <input
-                                        type="number"
-                                        placeholder="0.00"
-                                        step="0.01"
-                                        value={amount}
-                                        onChange={(e) => setAmount(e.target.value)}
-                                        className="w-full glass bg-white/5 border-white/5 rounded-2xl pl-12 pr-5 py-4 text-3xl font-black tracking-tighter text-white focus:outline-none focus:bg-white/10 focus:border-white/20 transition-all placeholder:text-gray-800"
-                                    />
-                                </div>
-                            </div>
+                            {/* Title */}
+                            <input
+                                type="text"
+                                placeholder={isExpense ? "What did you spend on?" : "Source of income"}
+                                value={title}
+                                onChange={(e) => setTitle(e.target.value)}
+                                className="w-full bg-white/5 rounded-xl px-4 py-2.5 text-sm text-white font-black tracking-tight focus:outline-none focus:bg-white/10 transition-all placeholder:text-gray-700 border border-white/5"
+                            />
 
-                            {/* Date & Category Grid */}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2 relative">
-                                    <label className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">
-                                        <CalendarIcon size={12} /> Date
-                                    </label>
+                            {/* Date & Card */}
+                            <div className="grid grid-cols-2 gap-2">
+                                <div className="relative">
                                     <button
                                         type="button"
                                         onClick={() => setShowCalendar(!showCalendar)}
-                                        className="w-full glass bg-white/5 border-white/5 rounded-2xl px-5 py-4 text-white text-xs font-black uppercase tracking-widest flex items-center justify-between hover:bg-white/10 transition-all"
+                                        className="w-full bg-white/5 border border-white/5 rounded-xl px-3 py-2.5 text-white text-[9px] font-black uppercase tracking-widest flex items-center justify-between hover:bg-white/10 transition-all"
                                     >
                                         <span>{new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-                                        <Zap size={14} className="text-neon-green" />
+                                        <Zap size={11} className="text-neon-green" />
                                     </button>
-
                                     {showCalendar && (
-                                        <div className="absolute bottom-full left-0 w-64 mb-4 z-50">
+                                        <div className="absolute bottom-full left-0 w-64 mb-2 z-50">
                                             <CalendarFilter
                                                 transactions={[]}
                                                 selectedDate={date}
-                                                onSelectDate={(newDate) => {
-                                                    setDate(newDate);
-                                                    setShowCalendar(false);
-                                                }}
+                                                onSelectDate={(newDate) => { setDate(newDate); setShowCalendar(false); }}
                                                 onClose={() => setShowCalendar(false)}
                                             />
                                         </div>
                                     )}
                                 </div>
 
-                                <div className="space-y-2">
-                                    <label className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">
-                                        <CardIcon size={12} /> Paid With
-                                    </label>
-                                    <select
-                                        value={selectedCardId}
-                                        onChange={(e) => setSelectedCardId(e.target.value)}
-                                        className="w-full glass bg-white/5 border-white/5 rounded-2xl px-5 py-4 text-white text-[10px] font-black uppercase tracking-widest focus:outline-none hover:bg-white/10 transition-all appearance-none cursor-pointer"
-                                    >
-                                        <option value="" className="bg-black">Liquid Cash</option>
-                                        {cards.map(card => (
-                                            <option key={card.id} value={card.id} className="bg-black">
-                                                {card.bank || 'Card'} • {card.number?.slice(-4)}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
-
-                            {/* Categories Chips */}
-                            <div className="space-y-4">
-                                <label className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">
-                                    <Tag size={12} /> Category
-                                </label>
-                                <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
-                                    {categories.map((cat) => (
-                                        <button
-                                            key={cat}
-                                            type="button"
-                                            onClick={() => setCategory(cat)}
-                                            className={`py-2.5 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all ${category === cat
-                                                ? 'bg-white text-black shadow-xl scale-105'
-                                                : 'glass bg-white/5 text-gray-400 border-white/5 hover:text-white hover:bg-white/10'
-                                                }`}
-                                        >
-                                            {cat}
-                                        </button>
+                                <select
+                                    value={selectedCardId}
+                                    onChange={(e) => setSelectedCardId(e.target.value)}
+                                    className="bg-white/5 border border-white/5 rounded-xl px-3 py-2.5 text-white text-[9px] font-black uppercase tracking-widest focus:outline-none hover:bg-white/10 transition-all appearance-none cursor-pointer"
+                                >
+                                    <option value="" className="bg-black">Cash</option>
+                                    {cards.map(card => (
+                                        <option key={card.id} value={card.id} className="bg-black">
+                                            {card.name || 'Card'} •{card.number?.slice(-4)}
+                                        </option>
                                     ))}
-                                </div>
+                                </select>
                             </div>
 
-                            {/* Submit Button */}
-                            <motion.button
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
+                            {/* Categories */}
+                            <div className="grid grid-cols-4 gap-1.5">
+                                {categories.map((cat) => (
+                                    <button
+                                        key={cat}
+                                        type="button"
+                                        onClick={() => setCategory(cat)}
+                                        className={`py-1.5 rounded-lg text-[8px] font-black uppercase tracking-wider transition-all ${category === cat
+                                            ? 'bg-white text-black shadow-xl'
+                                            : 'bg-white/5 text-gray-500 border border-white/5 hover:text-white'
+                                            }`}
+                                    >
+                                        {cat}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Submit */}
+                            <button
                                 type="submit"
-                                className={`w-full py-5 rounded-[2rem] font-black uppercase tracking-[0.2em] text-[10px] mt-8 transition-all shadow-2xl ${isExpense
-                                    ? 'bg-neon-red text-white shadow-neon-red/20'
-                                    : 'bg-neon-green text-black shadow-neon-green/20'
+                                className={`w-full py-3 rounded-2xl font-black uppercase tracking-[0.15em] text-[10px] transition-all shadow-lg ${isExpense
+                                    ? 'bg-neon-red text-white'
+                                    : 'bg-neon-green text-black'
                                     }`}
                             >
                                 {initialData ? 'Save Changes' : `Save ${isExpense ? 'Expense' : 'Income'}`}
-                            </motion.button>
+                            </button>
                         </form>
                     </motion.div>
                 </div>

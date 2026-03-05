@@ -8,16 +8,20 @@ import ActivityList from './ActivityList';
 import AddTransactionModal from './AddTransactionModal';
 import ScanReceiptModal from './ScanReceiptModal';
 import NotificationsModal from './NotificationsModal';
+import { useEffect } from 'react';
 
 import { CATEGORY_COLORS } from '../utils/constants';
 import { useNotifications } from '../hooks/useNotifications';
+import CardFilterDropdown from './CardFilterDropdown';
+import { containerVariants, itemVariants } from '../utils/motionConfig';
 
-export default function Dashboard({ transactions, onAddTransaction, onDeleteTransaction, onEditTransaction, currency, user, cards, onUpdateProfile, onOpenPremium }) {
+export default function Dashboard({ transactions, onAddTransaction, onDeleteTransaction, onEditTransaction, currency, user, cards, isCardsLoaded, onUpdateProfile, onOpenPremium }) {
     const navigate = useNavigate();
     const [activeModalType, setActiveModalType] = useState(null);
     const [editingTransaction, setEditingTransaction] = useState(null);
     const [isScanModalOpen, setIsScanModalOpen] = useState(false);
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+    const [selectedCardId, setSelectedCardId] = useState(null); // null = Overall
 
     const {
         notifications,
@@ -42,11 +46,17 @@ export default function Dashboard({ transactions, onAddTransaction, onDeleteTran
         }
     };
 
+    // Filter transactions by selected card (null = all)
+    const filteredTransactions = useMemo(() => {
+        if (!selectedCardId) return transactions || [];
+        return (transactions || []).filter(tx => tx.cardId === selectedCardId);
+    }, [transactions, selectedCardId]);
+
     const currentMonthData = useMemo(() => {
         const now = new Date();
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-        return (transactions || []).reduce((acc, tx) => {
+        return filteredTransactions.reduce((acc, tx) => {
             const txDate = new Date(tx?.date || new Date());
             const amountStr = tx?.amount || '0';
             const val = parseFloat(amountStr.replace(/[^\d.-]/g, ''));
@@ -63,7 +73,7 @@ export default function Dashboard({ transactions, onAddTransaction, onDeleteTran
             }
             return acc;
         }, { totalIncome: 0, totalExpense: 0, monthlyIncome: 0, monthlyExpense: 0, monthTransactions: [] });
-    }, [transactions]);
+    }, [filteredTransactions]);
 
     const totalBalance = (currentMonthData.totalIncome - currentMonthData.totalExpense).toFixed(2);
 
@@ -88,20 +98,9 @@ export default function Dashboard({ transactions, onAddTransaction, onDeleteTran
 
     const totalExpenseValue = currentMonthData.monthlyExpense;
 
-    const container = useMemo(() => ({
-        hidden: { opacity: 0 },
-        show: {
-            opacity: 1,
-            transition: {
-                staggerChildren: 0.05
-            }
-        }
-    }), []);
-
-    const item = useMemo(() => ({
-        hidden: { opacity: 0, y: 20 },
-        show: { opacity: 1, y: 0 }
-    }), []);
+    // Use shared motionConfig variants
+    const container = containerVariants;
+    const item = itemVariants;
 
     return (
         <div className="pt-4 md:pt-8 px-4 md:px-6 pb-32 md:pb-12 max-w-7xl mx-auto overflow-x-hidden min-h-screen">
@@ -136,14 +135,18 @@ export default function Dashboard({ transactions, onAddTransaction, onDeleteTran
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                 >
-                    <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[10px] md:text-xs font-black text-neon-green uppercase tracking-[0.2em]">Live Overview</span>
-                        <div className="w-1 md:w-1.5 h-1 md:h-1.5 rounded-full bg-neon-green shadow-neon animate-pulse" />
+                    <div className="flex items-center gap-4">
+                        <h1 className="text-2xl md:text-4xl font-black text-white tracking-tighter uppercase leading-none">
+                            DASH<span className="text-neon-green">BOARD</span>
+                        </h1>
+                        <div className="flex items-center gap-2 px-2 md:px-3 py-1 md:py-1.5 rounded-full glass border-white/5 bg-white/5">
+                            <div className="w-1 md:w-1.5 h-1 md:h-1.5 rounded-full bg-neon-green shadow-neon" />
+                            <span className="text-[8px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest">On Track</span>
+                        </div>
                     </div>
-                    <h1 className="text-2xl md:text-4xl font-black text-white tracking-tighter uppercase leading-none">
-                        DASH<span className="text-neon-green">BOARD</span>
-                    </h1>
                 </motion.div>
+
+
 
                 <div className="hidden md:block">
                     <div className="flex items-center gap-2">
@@ -152,6 +155,18 @@ export default function Dashboard({ transactions, onAddTransaction, onDeleteTran
                     </div>
                 </div>
             </header>
+
+            {/* Card Filter Dropdown — only shows when 2+ cards */}
+            {(cards || []).length > 1 && (
+                <div className="mb-8 flex items-center gap-3">
+                    <p className="text-[9px] font-black text-gray-600 uppercase tracking-[0.3em] shrink-0">View</p>
+                    <CardFilterDropdown
+                        cards={cards}
+                        selectedCardId={selectedCardId}
+                        onSelect={setSelectedCardId}
+                    />
+                </div>
+            )}
 
             {/* Bento Grid Layout */}
             <motion.div
@@ -289,7 +304,7 @@ export default function Dashboard({ transactions, onAddTransaction, onDeleteTran
                 {/* Activity Bento */}
                 <motion.div variants={item} className="lg:col-span-7 space-y-6">
                     <ActivityList
-                        transactions={transactions}
+                        transactions={filteredTransactions}
                         onDelete={onDeleteTransaction}
                         onEdit={handleEditClick}
                     />
@@ -298,9 +313,16 @@ export default function Dashboard({ transactions, onAddTransaction, onDeleteTran
                 {/* Monthly Budget Bento */}
                 <motion.div variants={item} className="lg:col-span-6 glass-card p-5 md:p-8">
                     {(() => {
-                        const unfrozenCards = (cards || []).filter(c => !c.frozen && !c.status?.includes('frozen'));
-                        const totalLimit = unfrozenCards.reduce((sum, card) => sum + (parseFloat(card.limit) || 0), 0);
-                        const budgetLimit = totalLimit > 0 ? totalLimit : 50000;
+                        // If a card is selected, use that card's limit; otherwise sum all unfrozen cards
+                        let budgetLimit;
+                        if (selectedCardId) {
+                            const selectedCard = (cards || []).find(c => c.id === selectedCardId);
+                            budgetLimit = parseFloat(selectedCard?.limit) || 50000;
+                        } else {
+                            const unfrozenCards = (cards || []).filter(c => !c.frozen && !c.status?.includes('frozen'));
+                            const totalLimit = unfrozenCards.reduce((sum, card) => sum + (parseFloat(card.limit) || 0), 0);
+                            budgetLimit = totalLimit > 0 ? totalLimit : 50000;
+                        }
                         const progress = Math.min((currentMonthData.monthlyExpense / budgetLimit) * 100, 100);
 
                         return (
@@ -345,7 +367,7 @@ export default function Dashboard({ transactions, onAddTransaction, onDeleteTran
                     <h3 className="text-xl font-black tracking-tight text-white mb-6 uppercase">Bills & Subs</h3>
                     <div className="space-y-4">
                         {(() => {
-                            const billTx = (transactions || [])
+                            const billTx = filteredTransactions
                                 .filter(t => t?.category === 'Bills' || t?.category === 'Subscriptions' || t?.title?.toLowerCase()?.includes('subscription'))
                                 .sort((a, b) => new Date(b.date) - new Date(a.date));
 

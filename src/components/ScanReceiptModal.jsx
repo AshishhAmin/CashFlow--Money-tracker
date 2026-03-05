@@ -110,10 +110,11 @@ export default function ScanReceiptModal({ isOpen, onClose, onAdd, currency }) {
                     />
 
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                        className="relative glass-card w-full max-w-md p-8 border-white/10 shadow-[0_50px_100px_rgba(0,0,0,0.5)] z-20"
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 10 }}
+                        transition={{ duration: 0.18, ease: 'easeOut' }}
+                        className="relative glass-card w-full max-w-md p-6 border-white/10 shadow-[0_50px_100px_rgba(0,0,0,0.5)] z-20"
                     >
                         <div className="flex justify-between items-start mb-8">
                             <div>
@@ -131,21 +132,43 @@ export default function ScanReceiptModal({ isOpen, onClose, onAdd, currency }) {
                         </div>
 
                         {step === 'upload' && (
-                            <div className="flex flex-col items-center gap-8 py-10">
-                                <motion.div
-                                    whileHover={{ scale: 1.05 }}
-                                    className="relative w-40 h-40 rounded-[3rem] glass bg-white/5 border-2 border-dashed border-white/10 flex items-center justify-center group cursor-pointer overflow-hidden transition-all hover:border-neon-green/50"
-                                >
-                                    <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer z-20" onChange={handleFileSelect} />
-                                    <div className="absolute inset-0 bg-neon-green/5 opacity-0 group-hover:opacity-100 transition-opacity z-0" />
-                                    <div className="flex flex-col items-center gap-3 z-10">
-                                        <Camera size={48} className="text-gray-600 group-hover:text-neon-green transition-all" />
-                                        <span className="text-[8px] font-black uppercase tracking-widest text-gray-700 group-hover:text-white transition-all">Take Photo</span>
-                                    </div>
-                                </motion.div>
-                                <div className="text-center space-y-2">
-                                    <p className="text-white text-xs font-black uppercase tracking-widest">Ready to scan</p>
-                                    <p className="text-gray-600 text-[10px] font-black uppercase tracking-widest leading-relaxed">System accepts JPEG or PNG images</p>
+                            <div className="flex flex-col items-center gap-6 py-6">
+                                <div className="text-center space-y-1">
+                                    <p className="text-white text-xs font-black uppercase tracking-widest">Capture or Upload Receipt</p>
+                                    <p className="text-gray-600 text-[9px] font-black uppercase tracking-widest">Accepts JPEG or PNG images</p>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4 w-full">
+                                    {/* Camera Button */}
+                                    <label className="relative flex flex-col items-center justify-center gap-3 py-8 rounded-2xl bg-white/5 border border-white/10 hover:border-neon-green/40 hover:bg-neon-green/5 transition-all cursor-pointer group">
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            capture="environment"
+                                            className="absolute inset-0 opacity-0 cursor-pointer"
+                                            onChange={handleFileSelect}
+                                        />
+                                        <Camera size={32} className="text-gray-600 group-hover:text-neon-green transition-colors" />
+                                        <div className="text-center">
+                                            <p className="text-[9px] font-black uppercase tracking-widest text-white">Take Photo</p>
+                                            <p className="text-[8px] text-gray-600 font-black uppercase tracking-wider mt-0.5">Camera</p>
+                                        </div>
+                                    </label>
+
+                                    {/* Gallery Button */}
+                                    <label className="relative flex flex-col items-center justify-center gap-3 py-8 rounded-2xl bg-white/5 border border-white/10 hover:border-brand-blue/40 hover:bg-brand-blue/5 transition-all cursor-pointer group">
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            className="absolute inset-0 opacity-0 cursor-pointer"
+                                            onChange={handleFileSelect}
+                                        />
+                                        <ImageIcon size={32} className="text-gray-600 group-hover:text-brand-blue transition-colors" />
+                                        <div className="text-center">
+                                            <p className="text-[9px] font-black uppercase tracking-widest text-white">From Gallery</p>
+                                            <p className="text-[8px] text-gray-600 font-black uppercase tracking-wider mt-0.5">Upload</p>
+                                        </div>
+                                    </label>
                                 </div>
                             </div>
                         )}

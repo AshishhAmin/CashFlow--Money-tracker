@@ -35,33 +35,17 @@ export default function Login({ toggleView }) {
 
     return (
         <div className="flex flex-col items-center justify-center min-h-screen p-6 relative bg-app-black">
-            {/* Ambient Background */}
-            <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10">
-                <motion.div
-                    animate={{
-                        scale: [1, 1.2, 1],
-                        rotate: [0, 90, 0],
-                        opacity: [0.3, 0.5, 0.3]
-                    }}
-                    transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                    className="absolute -top-[10%] -left-[10%] w-[50%] h-[50%] bg-neon-green/20 rounded-full blur-[120px]"
-                />
-                <motion.div
-                    animate={{
-                        scale: [1, 1.3, 1],
-                        rotate: [0, -90, 0],
-                        opacity: [0.2, 0.4, 0.2]
-                    }}
-                    transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-                    className="absolute -bottom-[10%] -right-[10%] w-[60%] h-[60%] bg-brand-purple/20 rounded-full blur-[150px]"
-                />
+            {/* Ambient Background - Simplified for performance */}
+            <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10 bg-[#050505]">
+                <div className="absolute -top-[10%] -left-[10%] w-[50%] h-[50%] bg-neon-green/10 rounded-full blur-[100px] opacity-40" />
+                <div className="absolute -bottom-[10%] -right-[10%] w-[60%] h-[60%] bg-brand-purple/10 rounded-full blur-[120px] opacity-30" />
             </div>
 
             <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6 }}
-                className="w-full max-w-md glass-card p-8 relative overflow-hidden"
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+                className="w-full max-w-md mx-4 glass-card p-6 md:p-10 relative overflow-hidden my-auto"
             >
                 <div className="text-center mb-10">
                     <motion.div
