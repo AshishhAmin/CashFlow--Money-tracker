@@ -9,7 +9,7 @@ const categories = ['All', 'Food', 'Entertainment', 'Transport', 'Shopping', 'Bi
 
 export default function ActivityList({ transactions, onDelete, onEdit }) {
     const [activeCategory, setActiveCategory] = useState('All');
-    const [dateFilter, setDateFilter] = useState(new Date().toISOString().split('T')[0]);
+    const [dateFilter, setDateFilter] = useState(''); // empty = all time
     const [showCalendar, setShowCalendar] = useState(false);
     const [showAll, setShowAll] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState({ isOpen: false, txId: null, txData: null });
@@ -22,16 +22,19 @@ export default function ActivityList({ transactions, onDelete, onEdit }) {
         return () => clearInterval(timer);
     }, []);
 
-    const filteredTransactions = transactions.filter(tx => {
-        if (dateFilter) {
-            const txDate = new Date(tx.date).toISOString().split('T')[0];
-            if (txDate !== dateFilter) return false;
-        }
-        if (activeCategory === 'All') return true;
-        if (activeCategory === 'Food' && tx.category.includes('Food')) return true;
-        if (activeCategory === 'Work' && tx.category === 'Work') return true;
-        return tx.category === activeCategory;
-    });
+    // Sort newest first, then apply filters
+    const filteredTransactions = [...(transactions || [])]
+        .sort((a, b) => new Date(b.date) - new Date(a.date))
+        .filter(tx => {
+            if (dateFilter) {
+                const txDate = new Date(tx.date).toISOString().split('T')[0];
+                if (txDate !== dateFilter) return false;
+            }
+            if (activeCategory === 'All') return true;
+            if (activeCategory === 'Food' && tx.category?.includes('Food')) return true;
+            if (activeCategory === 'Work' && tx.category === 'Work') return true;
+            return tx.category === activeCategory;
+        });
 
     const displayedTransactions = showAll ? filteredTransactions : filteredTransactions.slice(0, 6);
 
@@ -40,7 +43,12 @@ export default function ActivityList({ transactions, onDelete, onEdit }) {
             <div className="flex justify-between items-end mb-4 md:mb-6">
                 <div>
                     <h2 className="text-lg md:text-xl font-black text-white uppercase tracking-tight">Transactions Activity</h2>
-                    <p className="text-gray-500 text-[8px] md:text-[10px] font-black uppercase tracking-widest mt-1">Daily Stream</p>
+                    <p className="text-gray-500 text-[8px] md:text-[10px] font-black uppercase tracking-widest mt-1">
+                        {dateFilter
+                            ? new Date(dateFilter).toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' })
+                            : `All Time • ${filteredTransactions.length} entries`
+                        }
+                    </p>
                 </div>
                 <div className="flex items-center gap-1.5 md:gap-2">
                     <button
@@ -113,9 +121,10 @@ export default function ActivityList({ transactions, onDelete, onEdit }) {
                             <motion.div
                                 key={tx.id}
                                 layout
-                                initial={{ opacity: 0, x: -20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: index * 0.05 }}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 0.12 }}
                                 className="group relative flex items-center justify-between glass-card p-3 md:p-4 border-white/5 hover:bg-white/5 transition-all cursor-pointer"
                             >
                                 <div className="flex items-center gap-3 md:gap-4">

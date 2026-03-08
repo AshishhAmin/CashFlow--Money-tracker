@@ -126,12 +126,30 @@ function AuthenticatedApp() {
   const handleAddTransaction = async (data) => {
     const isExpense = data.type === 'expense';
     const sign = isExpense ? '-' : '+';
+
+    // Fix: parse date as LOCAL time, not UTC midnight
+    let txDate;
+    if (data.date) {
+      const today = new Date().toISOString().split('T')[0];
+      if (data.date === today) {
+        // Use exact current timestamp for today's transactions
+        txDate = new Date().toISOString();
+      } else {
+        // Parse as local midnight (avoids UTC offset shifting the day)
+        const [y, m, d] = data.date.split('-').map(Number);
+        txDate = new Date(y, m - 1, d, 12, 0, 0).toISOString();
+      }
+    } else {
+      txDate = new Date().toISOString();
+    }
+
     const newTransaction = {
       title: data.title,
       category: data.category,
       amount: `${sign}${currency.symbol}${data.amount.toLocaleString()}`,
-      date: data.date ? new Date(data.date).toISOString() : new Date().toISOString(),
+      date: txDate,
       cardId: data.cardId || null,
+      isRecurring: data.isRecurring || false,
     };
     await addDoc(collection(db, "users", currentUser.uid, "transactions"), newTransaction);
     if (isExpense && data.cardId) {
@@ -156,6 +174,7 @@ function AuthenticatedApp() {
       date: updatedData.date ? new Date(updatedData.date).toISOString() : new Date().toISOString(),
       category: updatedData.category,
       cardId: updatedData.cardId || null,
+      isRecurring: updatedData.isRecurring || false,
     });
   };
 

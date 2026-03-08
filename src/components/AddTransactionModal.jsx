@@ -1,4 +1,4 @@
-import { X, Calendar as CalendarIcon, Zap, ArrowDown, ArrowUp } from 'lucide-react';
+import { X, Calendar as CalendarIcon, Zap, ArrowDown, ArrowUp, RefreshCw } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CalendarFilter from './CalendarFilter';
@@ -13,6 +13,7 @@ export default function AddTransactionModal({ isOpen, onClose, onAdd, type = 'ex
     const [showCalendar, setShowCalendar] = useState(false);
     const [category, setCategory] = useState(type === 'expense' ? 'Food' : 'Work');
     const [selectedCardId, setSelectedCardId] = useState('');
+    const [isRecurring, setIsRecurring] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
@@ -21,6 +22,7 @@ export default function AddTransactionModal({ isOpen, onClose, onAdd, type = 'ex
                 const absAmount = parseFloat(initialData.amount.replace(/[^\d.-]/g, ''));
                 setAmount(Math.abs(absAmount).toString());
                 setCategory(initialData.category);
+                setIsRecurring(initialData.isRecurring || false);
                 try {
                     const d = new Date(initialData.date);
                     if (!isNaN(d.getTime())) setDate(d.toISOString().split('T')[0]);
@@ -29,6 +31,7 @@ export default function AddTransactionModal({ isOpen, onClose, onAdd, type = 'ex
                 setCategory(type === 'expense' ? 'Food' : 'Work');
                 setTitle('');
                 setAmount('');
+                setIsRecurring(false);
                 setDate(new Date().toISOString().split('T')[0]);
                 setSelectedCardId(cards.length === 1 ? cards[0].id : '');
             }
@@ -41,7 +44,15 @@ export default function AddTransactionModal({ isOpen, onClose, onAdd, type = 'ex
     const handleSubmit = (e) => {
         e.preventDefault();
         if (!title || !amount) return;
-        onAdd({ title, amount: parseFloat(amount), category, type, date, cardId: selectedCardId });
+        onAdd({
+            title,
+            amount: parseFloat(amount),
+            category,
+            type,
+            date,
+            cardId: selectedCardId,
+            isRecurring
+        });
         onClose();
     };
 
@@ -153,6 +164,29 @@ export default function AddTransactionModal({ isOpen, onClose, onAdd, type = 'ex
                                         {cat}
                                     </button>
                                 ))}
+                            </div>
+
+                            {/* Recurring Toggle */}
+                            <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5 mt-2">
+                                <div className="flex items-center gap-2">
+                                    <div className={`p-1.5 rounded-lg ${isRecurring ? 'bg-neon-green/20 text-neon-green' : 'bg-white/5 text-gray-500'}`}>
+                                        <RefreshCw size={14} className={isRecurring ? 'animate-spin-slow' : ''} />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black text-white uppercase tracking-tight">Recurring Transaction</p>
+                                        <p className="text-[8px] text-gray-500 font-black uppercase tracking-widest">Mark as Bill or Subscription</p>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsRecurring(!isRecurring)}
+                                    className={`relative w-10 h-5 rounded-full transition-all duration-300 ${isRecurring ? 'bg-neon-green/20' : 'bg-white/10'}`}
+                                >
+                                    <motion.div
+                                        animate={{ x: isRecurring ? 20 : 2 }}
+                                        className={`absolute top-1 left-0 w-3 h-3 rounded-full ${isRecurring ? 'bg-neon-green shadow-neon' : 'bg-gray-600'}`}
+                                    />
+                                </button>
                             </div>
 
                             {/* Submit */}

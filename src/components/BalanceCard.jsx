@@ -2,10 +2,19 @@ import { ArrowUp, ArrowDown, TrendingUp } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function BalanceCard({ totalBalance, income, expenses, currency }) {
+    // Monthly savings rate = (income - expenses) / income * 100
+    const hasIncome = income > 0;
+    const savingsRate = hasIncome ? ((income - expenses) / income) * 100 : null;
+    const isPositive = savingsRate === null || savingsRate >= 0;
+    const rateLabel = savingsRate === null
+        ? 'No Data'
+        : `${isPositive ? '+' : ''}${savingsRate.toFixed(1)}% • Monthly`;
+
     return (
         <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
             className="glass-card p-5 md:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative overflow-hidden group border-white/10"
         >
             {/* Animated Glow effects */}
@@ -23,8 +32,13 @@ export default function BalanceCard({ totalBalance, income, expenses, currency }
                     <TrendingUp size={14} className="text-neon-green" />
                     TOTAL NET WORTH
                 </span>
-                <div className="px-3 py-1 bg-neon-green/10 text-neon-green text-[10px] font-black rounded-full border border-neon-green/20">
-                    +14.2% • MONTHLY
+                <div className={`px-3 py-1 text-[10px] font-black rounded-full border ${savingsRate === null
+                        ? 'bg-white/5 text-gray-500 border-white/10'
+                        : isPositive
+                            ? 'bg-neon-green/10 text-neon-green border-neon-green/20'
+                            : 'bg-neon-red/10 text-neon-red border-neon-red/20'
+                    }`}>
+                    {rateLabel}
                 </div>
             </div>
 

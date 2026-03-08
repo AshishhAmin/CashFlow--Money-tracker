@@ -368,7 +368,7 @@ export default function Dashboard({ transactions, onAddTransaction, onDeleteTran
                     <div className="space-y-4">
                         {(() => {
                             const billTx = filteredTransactions
-                                .filter(t => t?.category === 'Bills' || t?.category === 'Subscriptions' || t?.title?.toLowerCase()?.includes('subscription'))
+                                .filter(t => t?.isRecurring === true)
                                 .sort((a, b) => new Date(b.date) - new Date(a.date));
 
                             const uniqueBills = [];
