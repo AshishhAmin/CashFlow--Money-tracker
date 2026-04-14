@@ -9,6 +9,7 @@ const categories = ['All', 'Food', 'Entertainment', 'Transport', 'Shopping', 'Bi
 
 export default function ActivityList({ transactions, onDelete, onEdit }) {
     const [activeCategory, setActiveCategory] = useState('All');
+    const [typeFilter, setTypeFilter] = useState('All'); // 'All', 'Spends', 'Income'
     const [dateFilter, setDateFilter] = useState(''); // empty = all time
     const [showCalendar, setShowCalendar] = useState(false);
     const [showAll, setShowAll] = useState(false);
@@ -30,6 +31,9 @@ export default function ActivityList({ transactions, onDelete, onEdit }) {
                 const txDate = new Date(tx.date).toISOString().split('T')[0];
                 if (txDate !== dateFilter) return false;
             }
+            if (typeFilter === 'Income' && !tx.amount.startsWith('+')) return false;
+            if (typeFilter === 'Spends' && !tx.amount.startsWith('-')) return false;
+            
             if (activeCategory === 'All') return true;
             if (activeCategory === 'Food' && tx.category?.includes('Food')) return true;
             if (activeCategory === 'Work' && tx.category === 'Work') return true;
@@ -95,7 +99,24 @@ export default function ActivityList({ transactions, onDelete, onEdit }) {
                 </motion.div>
             )}
 
-            {/* Filter Chips */}
+            {/* Type Filters (All / Spends / Income) */}
+            <div className="flex gap-2 mb-4 bg-white/5 p-1 rounded-xl border border-white/5 w-fit">
+                {['All', 'Spends', 'Income'].map((type) => (
+                    <button
+                        key={type}
+                        onClick={() => setTypeFilter(type)}
+                        className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                            typeFilter === type 
+                                ? (type === 'Spends' ? 'bg-neon-red text-white' : type === 'Income' ? 'bg-neon-green text-black' : 'bg-white text-black')
+                                : 'text-gray-400 hover:text-white'
+                        }`}
+                    >
+                        {type}
+                    </button>
+                ))}
+            </div>
+
+            {/* Category Filter Chips */}
             <div className="flex gap-1.5 md:gap-2 overflow-x-auto pb-4 md:pb-6 scrollbar-hide">
                 {categories.map((cat, idx) => (
                     <motion.button
